@@ -1,0 +1,54 @@
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import "./sidebar.css";
+
+const Sidebar = ({ collapsed }) => {
+  const location = useLocation();
+
+  return (
+    <aside className={`sidebar${collapsed ? " collapsed" : ""}`}>
+      <nav className="sidebar-nav">
+        <ul>
+          <li>
+            <Link 
+              to="/" 
+              className={`sidebar-link${location.pathname === "/" ? " active" : ""}`}
+            >
+              <span className="sidebar-icon">🏠</span>
+              {!collapsed && <span className="sidebar-label">Home</span>}
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/mapa" 
+              className={`sidebar-link${location.pathname === "/mapa" ? " active" : ""}`}
+            >
+              <span className="sidebar-icon">🗺️</span>
+              {!collapsed && <span className="sidebar-label">Mapa</span>}
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/graficas" 
+              className={`sidebar-link${location.pathname === "/graficas" ? " active" : ""}`}
+            >
+              <span className="sidebar-icon">📊</span>
+              {!collapsed && <span className="sidebar-label">Gráficas</span>}
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/tablas" 
+              className={`sidebar-link${location.pathname === "/tablas" ? " active" : ""}`}
+            >
+              <span className="sidebar-icon">📋</span>
+              {!collapsed && <span className="sidebar-label">Tabla</span>}
+            </Link>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+  );
+};
+
+export default Sidebar;

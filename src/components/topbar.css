@@ -1,0 +1,61 @@
+.topbar {
+  width: 100%;
+  height: 56px;
+  background: #b6c2e1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 101;
+  box-sizing: border-box;
+}
+
+.topbar-logo {
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: none;
+  margin-right: 24px;
+}
+
+.topbar-btn {
+  background: none;
+  outline: none;
+  border: none;
+  color: #e6dddd;
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 10%;
+  transition: background 0.2s;
+  margin-right: 24px;
+}
+
+.topbar-btn:hover {
+  background: #d6dbee;
+
+}
+.topbar-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
+.collapse-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  margin-bottom: 3px;
+  cursor: pointer;;
+}
+.collapse-btn:focus {
+  outline: none;
+  box-shadow: none;
+}
