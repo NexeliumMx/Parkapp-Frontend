@@ -6,6 +6,19 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import Button from '@mui/material/Button';
 import ButtonGroup from '@mui/material/ButtonGroup';
+import KonvaRenderer from "./konvaRenderer";
+import parkingImage from "../assets/map_testing/background-image.jpeg";
+import mapStageData from "../assets/map_testing/stage.json";
+import mapObjectsData from "../assets/map_testing/objects.json";
+import constSensorData from "../assets/map_testing/sensors.json";
+
+mapObjectsData.forEach(obj => {
+  const found = constSensorData.some(sensor => sensor.linkedKonvaId === obj.id);
+  if (!found) {
+    console.warn(`No sensor linked for Konva object with id: ${obj.id}`);
+  }
+});
+
 
 const Mapa = () => {
   // States for filters
@@ -29,7 +42,6 @@ const Mapa = () => {
   const [hourFrom, setHourFrom] = useState('');
   const [hourTo, setHourTo] = useState('');
   const [period, setPeriod] = useState('tiempo-real'); // 'tiempo-real', 'rotacion', 'ocupacion'
-
   // Example options for torre and nivel
   const torres = ['Torre 1', 'Torre 2', 'Torre 3'];
   const niveles = ['Nivel 1', 'Nivel 2', 'Nivel 3'];
@@ -391,8 +403,18 @@ const Mapa = () => {
         <div className="map-visualization">
           <div className="map-content">
             <div className="map-placeholder">
-              {/* Add your map implementation here */}
+              
+              <KonvaRenderer
+                stage={mapStageData}
+                objects={mapObjectsData}
+                backgroundUrl={parkingImage}
+                containerWidth={mapStageData.width}
+                containerHeight={mapStageData.height}
+                period={period}
+                sensorData={constSensorData}
+              />   
             </div>
+            
           </div>
         </div>
       </div>

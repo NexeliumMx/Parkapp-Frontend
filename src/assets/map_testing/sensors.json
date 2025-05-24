@@ -1,0 +1,110 @@
+[
+  {
+    "id": "sensor1",
+    "complejo": "A",
+    "torre": "1",
+    "nivel": "PB",
+    "columna": "1",
+    "fila": "1",
+    "linkedKonvaId": "5rmdlxskl",
+    "estado": 0,
+    "frecuencia": 0.9,
+    "ocupacion": 0.2
+  },
+  {
+    "id": "sensor2",
+    "complejo": "A",
+    "torre": "1",
+    "nivel": "PB",
+    "columna": "2",
+    "fila": "1",
+    "linkedKonvaId": "ix3jwhvt2",
+    "estado": 1,
+    "frecuencia": 0.5,
+    "ocupacion": 0.8
+  },
+  {
+    "id": "sensor4",
+    "complejo": "A",
+    "torre": "1",
+    "nivel": "PB",
+    "columna": "3",
+    "fila": "1",
+    "linkedKonvaId": "a8x1a3dq8",
+    "estado": 1,
+    "frecuencia": 0.5,
+    "ocupacion": 0.8
+  },
+  {
+    "id": "sensor5",
+    "complejo": "A",
+    "torre": "1",
+    "nivel": "PB",
+    "columna": "4",
+    "fila": "1",
+    "linkedKonvaId": "k3xhw52nb",
+    "estado": 1,
+    "frecuencia": 0.5,
+    "ocupacion": 0.8
+  },
+  {
+    "id": "sensor6",
+    "complejo": "A",
+    "torre": "1",
+    "nivel": "PB",
+    "columna": "5",
+    "fila": "1",
+    "linkedKonvaId": "kx588ez9z",
+    "estado": 1,
+    "frecuencia": 0.5,
+    "ocupacion": 0.8
+  },
+  {
+    "id": "sensor7",
+    "complejo": "A",
+    "torre": "1",
+    "nivel": "PB",
+    "columna": "6",
+    "fila": "1",
+    "linkedKonvaId": "4g6lsccml",
+    "estado": 1,
+    "frecuencia": 0.5,
+    "ocupacion": 0.8
+  },
+  {
+    "id": "sensor8",
+    "complejo": "A",
+    "torre": "1",
+    "nivel": "PB",
+    "columna": "7",
+    "fila": "1",
+    "linkedKonvaId": "1unp08v9i",
+    "estado": 1,
+    "frecuencia": 0.5,
+    "ocupacion": 0.8
+  },
+  {
+    "id": "sensor9",
+    "complejo": "A",
+    "torre": "1",
+    "nivel": "PB",
+    "columna": "8",
+    "fila": "1",
+    "linkedKonvaId": "ho6dn95fz",
+    "estado": 1,
+    "frecuencia": 0.5,
+    "ocupacion": 0.8
+  },
+  {
+    "id": "sensor10",
+    "complejo": "A",
+    "torre": "1",
+    "nivel": "PB",
+    "columna": "9",
+    "fila": "1",
+    "linkedKonvaId": "ybu78jrvx",
+    "estado": 1,
+    "frecuencia": 0.5,
+    "ocupacion": 0.8
+  }
+]
