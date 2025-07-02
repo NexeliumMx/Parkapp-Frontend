@@ -218,6 +218,7 @@
 .gauge-vacant {
   font-size: 25px;
   color: white;
+  margin-top: -5px;
 }
 
 .gauge-label {
