@@ -81,6 +81,8 @@ const Dashboard = () => {
                           <div className="gauge-container">
                             <Gauge
                               value={Number(level.capacity) ? ((Number(level.capacity) - Number(level.occupied)) / Number(level.capacity)) * 100 : 0}
+                              height={100}
+                              width={100}
                               startAngle={0}
                               endAngle={360}
                               innerRadius="80%"

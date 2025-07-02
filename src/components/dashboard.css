@@ -16,7 +16,7 @@
 
 .dashboard-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 24px;
   justify-content: start;
   align-items: start;
@@ -132,9 +132,9 @@
 /* Levels section */
 .card-levels {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin: -10px 0px;
+  margin: 0px 0px;
 }
 
 /* Level box styling */
@@ -155,7 +155,7 @@
 .level-name {
   font-weight: bold;
   margin-top: 0px;
-  margin-bottom: -25px;
+  margin-bottom: 0px;
 }
 
 .level-vacant {
@@ -166,7 +166,7 @@
 .level-status {
   font-size: 0.8rem;
   color: #ccc;
-  margin-top: -35px;
+  margin-top: 0px;
   margin-bottom: 0px;
 }
 
@@ -212,7 +212,7 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  line-height: 1.2;
+  line-height: 1;
 }
 
 .gauge-vacant {
