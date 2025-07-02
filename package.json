@@ -14,6 +14,8 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^7.1.0",
     "@mui/x-charts": "^8.5.0",
+    "@tanstack/react-query": "^5.81.5",
+    "@tanstack/react-query-devtools": "^5.81.5",
     "konva": "^9.3.20",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

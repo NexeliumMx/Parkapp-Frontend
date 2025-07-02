@@ -224,3 +224,11 @@
   font-size: 10px;
   color: white;
 }
+
+.complex-title {
+  text-align: left;
+  font-size: 2rem;
+  font-weight: bold;
+  margin-bottom: 0.2em;
+  margin-top: 32px;
+}
