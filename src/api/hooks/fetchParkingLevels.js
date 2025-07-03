@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
 import { fetchParkingLevels } from '../httpRequests';
 
 /**
@@ -7,12 +7,30 @@ import { fetchParkingLevels } from '../httpRequests';
  * @param {object} options
  */
 export function useFetchParkingLevels(user_id, options = {}) {
-  return useQuery({
-    queryKey: ['parkingLevels', user_id],
-    queryFn: () => fetchParkingLevels(user_id),
-    enabled: !!user_id && (options.enabled === undefined ? true : options.enabled),
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 10, // 10 minutes
-    ...options,
-  });
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        const result = await fetchParkingLevels(user_id);
+        setData(result);
+        setError(null);
+      } catch (err) {
+        setError(err.message);
+        setData(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user_id) {
+      loadData();
+    }
+  }, [user_id]);
+
+  // Make sure to return setData function
+  return { data, isLoading, error, setData };
 }

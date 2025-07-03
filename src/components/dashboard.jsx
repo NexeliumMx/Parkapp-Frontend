@@ -3,9 +3,16 @@ import "./dashboard.css";
 import { Gauge } from "@mui/x-charts/Gauge";
 import { Divider } from "@mui/material";
 import { useFetchParkingLevels } from "../api/hooks/fetchParkingLevels";
+import useLevelUpdates from "../api/hooks/useLevelUpdates";
 
 const Dashboard = () => {
-  const { data, isLoading, error } = useFetchParkingLevels("fb713fca-4cbc-44b1-8a25-c6685c3efd31");
+  // Make sure you're destructuring setData
+  const { data, isLoading, error, setData } = useFetchParkingLevels("fb713fca-4cbc-44b1-8a25-c6685c3efd31");
+
+  // Enable WebSocket live updates - setData should now be a function
+  useLevelUpdates(setData);
+
+  console.log('Dashboard - setData type:', typeof setData); // Debug log
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading data</div>;
@@ -39,7 +46,8 @@ const Dashboard = () => {
       {Object.entries(complexes).map(([complexName, parkings]) => (
         <div key={complexName} className="complex-section">
           <h2 className="complex-title">{complexName}</h2>
-          <Divider sx={{ my: 1, borderColor: "#000000", borderWidth: 2, borderRadius:3 }} />          <div className="dashboard-cards">
+          <Divider sx={{ my: 1, borderColor: "#000000", borderWidth: 2, borderRadius:3 }} />
+          <div className="dashboard-cards">
             {Object.values(parkings).map(({ parking, parking_id, levels }) => {
               // Ensure numeric addition
               const totalCapacity = levels.reduce((sum, level) => sum + Number(level.capacity), 0);
