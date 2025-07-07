@@ -1,6 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const useLevelUpdates = (setData) => {
+  const processedMessages = useRef(new Set());
+
   useEffect(() => {
     console.log('Initializing WebSocket connection...');
     console.log('setData function type:', typeof setData);
@@ -21,8 +23,29 @@ const useLevelUpdates = (setData) => {
       try {
         const payload = JSON.parse(event.data);
         console.log('Parsed payload:', payload);
+        
+        // Create a message key using parking_id, floor, and current_state
+        const messageKey = `${payload.parking_id}-${payload.floor}-${payload.current_state}`;
+        
+        // Check if we've already processed this exact message recently
+        if (processedMessages.current.has(messageKey)) {
+          console.log('Duplicate message detected, skipping:', messageKey);
+          return;
+        }
+        
+        // Add to processed messages
+        processedMessages.current.add(messageKey);
+        
+        // Clean up old messages (keep only last 50 to prevent memory issues)
+        if (processedMessages.current.size > 50) {
+          const messages = Array.from(processedMessages.current);
+          processedMessages.current = new Set(messages.slice(-25));
+        }
+
         console.log('Payload type:', typeof payload);
         console.log('Current state:', payload.current_state, typeof payload.current_state);
+        console.log('Parking ID:', payload.parking_id);
+        console.log('Floor:', payload.floor);
 
         // Check if setData is actually a function
         if (typeof setData !== 'function') {
@@ -38,13 +61,24 @@ const useLevelUpdates = (setData) => {
             return prevData;
           }
 
+          let foundMatch = false;
           const updatedData = prevData.map(row => {
+            console.log('Checking row:', {
+              rowParkingId: row.parking_id,
+              payloadParkingId: payload.parking_id,
+              rowFloor: row.floor,
+              payloadFloor: payload.floor,
+              parkingMatch: row.parking_id === payload.parking_id,
+              floorMatch: row.floor === payload.floor
+            });
+
+            // Match by parking_id AND floor (since your data has these fields)
             if (row.parking_id === payload.parking_id && row.floor === payload.floor) {
+              foundMatch = true;
               console.log('Found matching row:', row);
               const currentOccupied = Number(row.occupied);
               let newOccupied;
 
-              // Fixed: Use current_state instead of current_status
               if (payload.current_state === true) {
                 newOccupied = currentOccupied + 1;
                 console.log('Adding 1 to occupied count');
@@ -65,6 +99,19 @@ const useLevelUpdates = (setData) => {
             }
             return row;
           });
+
+          if (!foundMatch) {
+            console.log('No matching row found for:', {
+              parking_id: payload.parking_id,
+              floor: payload.floor
+            });
+            console.log('Available parking_ids and floors:', prevData.map(row => ({
+              parking_id: row.parking_id,
+              floor: row.floor,
+              parking_alias: row.parking_alias,
+              floor_alias: row.floor_alias
+            })));
+          }
 
           console.log('Updated data:', updatedData);
           return updatedData;
@@ -115,6 +162,7 @@ const useLevelUpdates = (setData) => {
         socket.close(1000, 'Component unmounting');
       }
       console.log('WebSocket connection closed');
+      processedMessages.current.clear();
     };
   }, [setData]);
 };
