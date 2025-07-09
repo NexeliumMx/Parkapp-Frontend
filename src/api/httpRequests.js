@@ -10,7 +10,7 @@
 
 // Fetch level info by user access
 export async function fetchParkingLevels(user_id) {
-  let url = `http://localhost:7071/api/fetchGeneralInfo?user_id=${user_id}`;
+  let url = `http://localhost:7071/api/getGeneralInfo?user_id=${user_id}`;
   console.log(`[API CALL] fetchParkingLevels: ${url}`);
   const response = await fetch(url);
   const resData = await response.json();
@@ -20,4 +20,81 @@ export async function fetchParkingLevels(user_id) {
   }
 
   return resData;
+}
+
+export async function fetchLevelsByUser(user_id) {
+  let url = `http://localhost:7071/api/getLevelsByUser?user_id=${user_id}`;
+  console.log(`[API CALL] fetchLevelsByUser: ${url}`);
+  const response = await fetch(url);
+  const resData = await response.json();
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch levels by user');
+  }
+
+  return resData;
+}
+export async function fetchSensorsByLevel(parking_id, floor) {
+  let url = `http://localhost:7071/api/getSensorsByLevel?parking_id=${parking_id}&floor=${floor}`;
+  console.log(`[API CALL] fetchSensorsByLevel: ${url}`);
+  const response = await fetch(url);
+  const resData = await response.json();
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch sensors by level');
+  }
+
+  return resData;
+}
+export async function fetchAvailableDates(userId, filters = {}) {
+  const params = new URLSearchParams();
+  params.append('user_id', userId);
+  
+  // Add filters if provided
+  if (filters.parking_ids?.length) {
+    params.append('parking_ids', filters.parking_ids.join(','));
+  }
+  if (filters.level_ids?.length) {
+    params.append('level_ids', filters.level_ids.join(','));
+  }
+  if (filters.sensor_ids?.length) {
+    params.append('sensor_ids', filters.sensor_ids.join(','));
+  }
+
+  const url = `http://localhost:7071/api/getAvailableDates?${params}`;
+  console.log(`[API CALL] fetchAvailableDates: ${url}`);
+  
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    // Read the response as text first to check if it's empty
+    const responseText = await response.text();
+    
+    if (!responseText || responseText.trim() === '') {
+      return { 
+        available_dates: [], 
+        grouped_by_year_month: {}, 
+        total_dates: 0 
+      };
+    }
+
+    // Parse the text as JSON
+    try {
+      const resData = JSON.parse(responseText);
+      console.log('Available dates response:', resData);
+      return resData;
+    } catch (jsonError) {
+      console.error('JSON Parse Error:', jsonError);
+      console.error('Response text:', responseText);
+      throw new Error('Invalid JSON response from server');
+    }
+
+  } catch (error) {
+    console.error('Error in fetchAvailableDates:', error);
+    throw new Error(`Failed to fetch available dates: ${error.message}`);
+  }
 }

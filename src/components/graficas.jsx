@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import './graficas.css';
 import { LineChart } from '@mui/x-charts/LineChart';
 import Button from '@mui/material/Button';
@@ -10,51 +10,87 @@ import ListItemText from '@mui/material/ListItemText';
 import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import Typography from '@mui/material/Typography';
+import { useFetchLevelsbyUser } from '../api/hooks/useLevelbyUser';
+import { useFetchSensorsByLevel } from '../api/hooks/useSensorByLevel';
+import { useValidYears, useValidMonths, useValidDays } from '../api/hooks/useValidDates';
 
-const datos = [  
-  { sensor_id: "1", parking: "Torre A", level: "Nivel 1", row: 1, column: 1, rotacion: 14.2, ocupacion: 45 },
-  { sensor_id: "2", parking: "Torre A", level: "Nivel 1", row: 1, column: 2, rotacion: 0, ocupacion: 78 },
-  { sensor_id: "3", parking: "Torre A", level: "Nivel 2", row: 1, column: 1, rotacion: 90, ocupacion: 32 },
-  { sensor_id: "4", parking: "Torre A", level: "Nivel 2", row: 2, column: 1, rotacion: 180, ocupacion: 91 },
-  { sensor_id: "5", parking: "Torre B", level: "Nivel 1", row: 1, column: 1, rotacion: 45, ocupacion: 12 },
-  { sensor_id: "6", parking: "Torre B", level: "Nivel 1", row: 1, column: 2, rotacion: 270, ocupacion: 67 },
-  { sensor_id: "7", parking: "Torre B", level: "Nivel 2", row: 2, column: 1, rotacion: 0, ocupacion: 88 },
-  { sensor_id: "8", parking: "Torre B", level: "Nivel 2", row: 2, column: 2, rotacion: 180, ocupacion: 23 },
-  { sensor_id: "9", parking: "Torre C", level: "Nivel 1", row: 1, column: 1, rotacion: 90, ocupacion: 55 },
-  { sensor_id: "10", parking: "Torre C", level: "Nivel 1", row: 1, column: 2, rotacion: 0, ocupacion: 76 },
-  { sensor_id: "11", parking: "Torre C", level: "Nivel 2", row: 1, column: 1, rotacion: 270, ocupacion: 43 },
-  { sensor_id: "12", parking: "Torre C", level: "Nivel 3", row: 1, column: 1, rotacion: 180, ocupacion: 89 },
-  { sensor_id: "13", parking: "Torre C", level: "Nivel 3", row: 2, column: 1, rotacion: 45, ocupacion: 34 },
-  { sensor_id: "14", parking: "Torre D", level: "Nivel 1", row: 1, column: 1, rotacion: 90, ocupacion: 65 },
-  { sensor_id: "15", parking: "Torre D", level: "Nivel 1", row: 2, column: 1, rotacion: 0, ocupacion: 92 },
-  { sensor_id: "16", parking: "Torre D", level: "Nivel 2", row: 1, column: 1, rotacion: 180, ocupacion: 21 },
-  { sensor_id: "17", parking: "Torre D", level: "Nivel 2", row: 1, column: 2, rotacion: 270, ocupacion: 78 },
-  { sensor_id: "18", parking: "Torre D", level: "Nivel 3", row: 1, column: 1, rotacion: 45, ocupacion: 44 },
-  { sensor_id: "19", parking: "Torre D", level: "Nivel 3", row: 2, column: 1, rotacion: 90, ocupacion: 87 },
-  { sensor_id: "20", parking: "Torre D", level: "Nivel 3", row: 2, column: 2, rotacion: 0, ocupacion: 56 }
-];
+const flattenLevelsData = (data) => {
+  if (!data || !Array.isArray(data)) return [];
+  
+  const flattened = [];
+  data.forEach(parking => {
+    if (parking.levels && Array.isArray(parking.levels)) {
+      parking.levels.forEach(level => {
+        flattened.push({
+          parking_id: parking.parking_id,
+          complex: parking.complex,
+          parking_alias: parking.parking_alias,
+          floor: level.floor,
+          floor_alias: level.floor_alias
+        });
+      });
+    }
+  });
+  
+  return flattened;
+};
 
-// Utilidades para obtener opciones únicas y dependientes
-const getUniqueTowers = (data) => [...new Set(data.map(d => d.parking))];
-const getUniqueLevels = (data, selectedTowers) => [
-  ...new Set(
-    data
-      .filter(d => selectedTowers.length === 0 || selectedTowers.includes(d.parking))
-      .map(d => d.level)
-  ),
-];
-const getUniquePlaces = (data, selectedTowers, selectedLevels) => [
-  ...new Set(
-    data
-      .filter(d =>
-        (selectedTowers.length === 0 || selectedTowers.includes(d.parking)) &&
-        (selectedLevels.length === 0 || selectedLevels.includes(d.level))
-      )
-      .map(d => `Lugar ${d.row}-${d.column}`)
-  ),
-];
+const getUniqueParkings = (data) => {
+  if (!data || !Array.isArray(data)) return [];
+  return [...new Set(data.map(d => ({
+    id: d.parking_id,
+    name: d.parking_alias
+  })))].filter((parking, index, self) => 
+    index === self.findIndex(p => p.id === parking.id)
+  );
+};
 
-// Genera datos simulados para múltiples elementos seleccionados (torres, niveles o lugares)
+const getUniqueLevels = (data, selectedParkingIds) => {
+  if (!data || !Array.isArray(data)) return [];
+  
+  const filteredData = selectedParkingIds.length === 0 
+    ? data 
+    : data.filter(d => selectedParkingIds.includes(d.parking_id));
+  
+  const levelMap = new Map();
+  
+  filteredData.forEach(d => {
+    const key = `${d.parking_id}-${d.floor}`;
+    if (!levelMap.has(key)) {
+      levelMap.set(key, {
+        id: d.floor,
+        name: d.floor_alias,
+        parking_id: d.parking_id
+      });
+    }
+  });
+  
+  return Array.from(levelMap.values());
+};
+
+const getUniqueSensors = (sensorsData) => {
+  if (!sensorsData || !Array.isArray(sensorsData)) return [];
+  
+  return sensorsData.map(sensor => ({
+    id: sensor.sensor_id,
+    name: sensor.sensor_alias || `Sensor ${sensor.row}-${sensor.column}`,
+    row: sensor.row,
+    column: sensor.column,
+    sensor_id: sensor.sensor_id
+  }));
+};
+
+const getUniquePlaces = (sensorsData, selectedPlaces) => {
+  if (!sensorsData || !Array.isArray(sensorsData)) return [];
+  
+  return sensorsData.map(sensor => ({
+    id: sensor.sensor_id,
+    name: sensor.sensor_alias || `Lugar ${sensor.row}-${sensor.column}`,
+    row: sensor.row,
+    column: sensor.column
+  }));
+};
+
 function generarDatosSimuladosMulti({ tipo, seleccionados, periodo }) {
   const length = periodo === 'anual' ? 12 : periodo === 'mensual' ? 31 : 24;
   return Array.from({ length }, (_, i) => {
@@ -67,50 +103,133 @@ function generarDatosSimuladosMulti({ tipo, seleccionados, periodo }) {
   });
 }
 
-const Graficas = ({ sidebarCollapsed = false }) => {
+const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25-c6685c3efd31" }) => {
   const [period, setPeriod] = useState('anual');
   const [filter, setFilter] = useState('torre');
   const [year, setYear] = useState('');
   const [month, setMonth] = useState('');
   const [day, setDay] = useState('');
-  const [selectedTowers, setSelectedTowers] = useState([]);
-  const [selectedLevels, setSelectedLevels] = useState([]);
+  const [selectedParkingIds, setSelectedParkingIds] = useState([]);
+  const [selectedLevelIds, setSelectedLevelIds] = useState([]);
   const [selectedPlaces, setSelectedPlaces] = useState([]);
 
-  // Opciones dinámicas
-  const towerOptions = getUniqueTowers(datos);
-  const levelOptions = getUniqueLevels(datos, selectedTowers);
-  const placeOptions = getUniquePlaces(datos, selectedTowers, selectedLevels);
+  const dateFilters = useMemo(() => ({
+    parking_ids: selectedParkingIds.length ? selectedParkingIds : undefined,
+    level_ids: selectedLevelIds.length ? selectedLevelIds : undefined,
+    sensor_ids: selectedPlaces.length ? selectedPlaces : undefined
+  }), [selectedParkingIds, selectedLevelIds, selectedPlaces]);
 
-  // Determina el tipo de filtro y los elementos seleccionados
+  const { years, loading: yearsLoading, error: yearsError } = useValidYears(user_id, dateFilters);
+  const { months, loading: monthsLoading, error: monthsError } = useValidMonths(user_id, year, dateFilters);
+  const { days, loading: daysLoading, error: daysError } = useValidDays(user_id, year, month, dateFilters);
+
+  const { data: rawLevelsData, isLoading, error } = useFetchLevelsbyUser(user_id);
+
+  const levelsData = useMemo(() => {
+    return flattenLevelsData(rawLevelsData);
+  }, [rawLevelsData]);
+
+  const selectedParkingId = selectedParkingIds[0] || null;
+  const selectedLevelId = selectedLevelIds[0] || null;
+  
+  const { 
+    data: sensorsData, 
+    isLoading: sensorsLoading, 
+    error: sensorsError 
+  } = useFetchSensorsByLevel(selectedParkingId, selectedLevelId);
+
+  const parkingOptions = useMemo(() => {
+    return getUniqueParkings(levelsData);
+  }, [levelsData]);
+
+  const levelOptions = useMemo(() => {
+    return getUniqueLevels(levelsData, selectedParkingIds);
+  }, [levelsData, selectedParkingIds]);
+
+  const placeOptions = useMemo(() => {
+    return getUniquePlaces(sensorsData, selectedPlaces);
+  }, [sensorsData, selectedPlaces]);
+
+  React.useEffect(() => {
+    setSelectedLevelIds([]);
+    setSelectedPlaces([]);
+  }, [selectedParkingIds]);
+
+  React.useEffect(() => {
+    setSelectedPlaces([]);
+  }, [selectedLevelIds]);
+
+  React.useEffect(() => {
+    setYear('');
+    setMonth('');
+    setDay('');
+  }, [selectedParkingIds, selectedLevelIds, selectedPlaces]);
+
+  React.useEffect(() => {
+    setMonth('');
+    setDay('');
+  }, [year]);
+
+  React.useEffect(() => {
+    setDay('');
+  }, [month]);
+
   let tipo = 'torre';
-  let seleccionados = selectedTowers.length ? selectedTowers : towerOptions;
+  let seleccionados = selectedParkingIds.length 
+    ? parkingOptions.filter(p => selectedParkingIds.includes(p.id)).map(p => p.name)
+    : parkingOptions.map(p => p.name);
+
   if (filter === 'nivel') {
     tipo = 'nivel';
-    seleccionados = selectedLevels.length ? selectedLevels : levelOptions;
+    seleccionados = selectedLevelIds.length 
+      ? levelOptions.filter(l => selectedLevelIds.includes(l.id)).map(l => l.name)
+      : levelOptions.map(l => l.name);
   } else if (filter === 'sensor') {
     tipo = 'lugar';
-    seleccionados = selectedPlaces.length ? selectedPlaces : placeOptions;
+    seleccionados = selectedPlaces.length 
+      ? placeOptions.filter(p => selectedPlaces.includes(p.id)).map(p => p.name)
+      : placeOptions.map(p => p.name);
   }
 
-  // Genera datos simulados para los elementos seleccionados
   const datosSimuladosMulti = generarDatosSimuladosMulti({
     tipo,
     seleccionados,
     periodo: period,
   });
 
-  // Series dinámicas para ocupación
   const seriesOcupacion = seleccionados.map(nombre => ({
     dataKey: `ocupacion_${nombre}`,
     label: `Ocupación ${nombre}`,
   }));
 
-  // Series dinámicas para rotación
   const seriesRotacion = seleccionados.map(nombre => ({
     dataKey: `rotacion_${nombre}`,
     label: `Rotación ${nombre}`,
   }));
+
+  if (isLoading) {
+    return (
+      <div>
+        <h1 className="graficas-title">Gráficas</h1>
+        <h4 className="graficas-subtitle">Residencial Lomas de Bezares</h4>
+        <div style={{ padding: '20px', textAlign: 'center' }}>
+          Cargando datos de estacionamientos...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <h1 className="graficas-title">Gráficas</h1>
+        <h4 className="graficas-subtitle">Residencial Lomas de Bezares</h4>
+        <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>
+          Error al cargar datos: {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -141,42 +260,40 @@ const Graficas = ({ sidebarCollapsed = false }) => {
             >
               {/* Año */}
               <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
-                Año
+                Año {yearsLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
                 <FormControl fullWidth>
                   <Select
                     value={year}
                     onChange={e => setYear(e.target.value)}
                     style={{ width: "100%" }}
+                    disabled={yearsLoading}
                   >
                     <MenuItem value="">Todos</MenuItem>
-                    <MenuItem value="2024">2024</MenuItem>
-                    <MenuItem value="2025">2025</MenuItem>
+                    {years.map(yearOption => (
+                      <MenuItem key={yearOption} value={yearOption.toString()}>
+                        {yearOption}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </label>
               {/* Mes */}
               {(period === 'mensual' || period === 'diario') && (
                 <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
-                  Mes
+                  Mes {monthsLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
                   <FormControl fullWidth>
                     <Select
                       value={month}
                       onChange={e => setMonth(e.target.value)}
                       style={{ width: "100%" }}
+                      disabled={monthsLoading || !year}
                     >
                       <MenuItem value="">Todos</MenuItem>
-                      <MenuItem value="1">Enero</MenuItem>
-                      <MenuItem value="2">Febrero</MenuItem>
-                      <MenuItem value="3">Marzo</MenuItem>
-                      <MenuItem value="4">Abril</MenuItem>
-                      <MenuItem value="5">Mayo</MenuItem>
-                      <MenuItem value="6">Junio</MenuItem>
-                      <MenuItem value="7">Julio</MenuItem>
-                      <MenuItem value="8">Agosto</MenuItem>
-                      <MenuItem value="9">Septiembre</MenuItem>
-                      <MenuItem value="10">Octubre</MenuItem>
-                      <MenuItem value="11">Noviembre</MenuItem>
-                      <MenuItem value="12">Diciembre</MenuItem>
+                      {months.map(monthOption => (
+                        <MenuItem key={monthOption} value={monthOption.toString()}>
+                          {new Date(2000, monthOption - 1).toLocaleString('es', { month: 'long' })}
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </label>
@@ -184,17 +301,18 @@ const Graficas = ({ sidebarCollapsed = false }) => {
               {/* Día */}
               {period === 'diario' && (
                 <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
-                  Día
+                  Día {daysLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
                   <FormControl fullWidth>
                     <Select
                       value={day}
                       onChange={e => setDay(e.target.value)}
                       style={{ width: "100%" }}
+                      disabled={daysLoading || !year || !month}
                     >
                       <MenuItem value="">Todos</MenuItem>
-                      {[...Array(31)].map((_, i) => (
-                        <MenuItem key={i + 1} value={i + 1}>
-                          {i + 1}
+                      {days.map(dayOption => (
+                        <MenuItem key={dayOption} value={dayOption.toString()}>
+                          {dayOption}
                         </MenuItem>
                       ))}
                     </Select>
@@ -214,41 +332,46 @@ const Graficas = ({ sidebarCollapsed = false }) => {
                 minWidth: 0,
               }}
             >
-              {/* Torre */}
+              {/* Torre (Parking) */}
               {(filter === 'torre' || filter === 'nivel' || filter === 'sensor') && (
                 <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
                   Torre
                   {filter === 'torre' ? (
                     <Select
                       multiple
-                      value={selectedTowers}
+                      value={selectedParkingIds}
                       onChange={e =>
-                        setSelectedTowers(
+                        setSelectedParkingIds(
                           typeof e.target.value === 'string'
                             ? e.target.value.split(',')
                             : e.target.value
                         )
                       }
-                      renderValue={selected => selected.join(', ')}
+                      renderValue={selected => 
+                        parkingOptions
+                          .filter(p => selected.includes(p.id))
+                          .map(p => p.name)
+                          .join(', ')
+                      }
                       style={{ minWidth: 120, width: "100%" }}
                     >
-                      {towerOptions.map(tower => (
-                        <MenuItem key={tower} value={tower}>
-                          <Checkbox checked={selectedTowers.indexOf(tower) > -1} />
-                          <ListItemText primary={tower} />
+                      {parkingOptions.map(parking => (
+                        <MenuItem key={parking.id} value={parking.id}>
+                          <Checkbox checked={selectedParkingIds.indexOf(parking.id) > -1} />
+                          <ListItemText primary={parking.name} />
                         </MenuItem>
                       ))}
                     </Select>
                   ) : (
                     <Select
-                      value={selectedTowers[0] || ''}
-                      onChange={e => setSelectedTowers([e.target.value])}
+                      value={selectedParkingIds[0] || ''}
+                      onChange={e => setSelectedParkingIds(e.target.value ? [e.target.value] : [])}
                       style={{ minWidth: 120, width: "100%" }}
                     >
                       <MenuItem value="">Seleccione</MenuItem>
-                      {towerOptions.map(tower => (
-                        <MenuItem key={tower} value={tower}>
-                          {tower}
+                      {parkingOptions.map(parking => (
+                        <MenuItem key={parking.id} value={parking.id}>
+                          {parking.name}
                         </MenuItem>
                       ))}
                     </Select>
@@ -262,64 +385,88 @@ const Graficas = ({ sidebarCollapsed = false }) => {
                   {filter === 'nivel' ? (
                     <Select
                       multiple
-                      value={selectedLevels}
-                      onChange={e =>
-                        setSelectedLevels(
-                          typeof e.target.value === 'string'
-                            ? e.target.value.split(',')
-                            : e.target.value
-                        )
-                      }
-                      renderValue={selected => selected.join(', ')}
+                      value={selectedLevelIds}
+                      onChange={e => {
+                        const newValue = typeof e.target.value === 'string'
+                          ? e.target.value.split(',')
+                          : e.target.value;
+                        setSelectedLevelIds(newValue);
+                      }}
+                      renderValue={selected => {
+                        return levelOptions
+                          .filter(l => selected.includes(l.id))
+                          .map(l => l.name)
+                          .join(', ');
+                      }}
                       style={{ minWidth: 120, width: "100%" }}
                     >
                       {levelOptions.map(level => (
-                        <MenuItem key={level} value={level}>
-                          <Checkbox checked={selectedLevels.indexOf(level) > -1} />
-                          <ListItemText primary={level} />
+                        <MenuItem key={`${level.parking_id}-${level.id}`} value={level.id}>
+                          <Checkbox checked={selectedLevelIds.indexOf(level.id) > -1} />
+                          <ListItemText primary={level.name} />
                         </MenuItem>
                       ))}
                     </Select>
                   ) : (
                     <Select
-                      value={selectedLevels[0] || ''}
-                      onChange={e => setSelectedLevels([e.target.value])}
+                      value={selectedLevelIds[0] || ''}
+                      onChange={e => {
+                        const newValue = e.target.value ? [e.target.value] : [];
+                        setSelectedLevelIds(newValue);
+                      }}
                       style={{ minWidth: 120, width: "100%" }}
+                      disabled={!selectedParkingIds.length}
                     >
                       <MenuItem value="">Seleccione</MenuItem>
                       {levelOptions.map(level => (
-                        <MenuItem key={level} value={level}>
-                          {level}
+                        <MenuItem key={`${level.parking_id}-${level.id}`} value={level.id}>
+                          {level.name}
                         </MenuItem>
                       ))}
                     </Select>
                   )}
                 </label>
               )}
-              {/* Lugar */}
+              {/* Lugar - UPDATED TO USE REAL SENSORS DATA */}
               {filter === 'sensor' && (
                 <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
                   Lugar
-                  <Select
-                    multiple
-                    value={selectedPlaces}
-                    onChange={e =>
-                      setSelectedPlaces(
-                        typeof e.target.value === 'string'
-                          ? e.target.value.split(',')
-                          : e.target.value
-                      )
-                    }
-                    renderValue={selected => selected.join(', ')}
-                    style={{ minWidth: 120, width: "100%" }}
-                  >
-                    {placeOptions.map(place => (
-                      <MenuItem key={place} value={place}>
-                        <Checkbox checked={selectedPlaces.indexOf(place) > -1} />
-                        <ListItemText primary={place} />
-                      </MenuItem>
-                    ))}
-                  </Select>
+                  {sensorsLoading ? (
+                    <div style={{ padding: '8px', textAlign: 'center', fontSize: '14px' }}>
+                      Cargando sensores...
+                    </div>
+                  ) : sensorsError ? (
+                    <div style={{ padding: '8px', textAlign: 'center', fontSize: '14px', color: 'red' }}>
+                      Error al cargar sensores
+                    </div>
+                  ) : (
+                    <Select
+                      multiple
+                      value={selectedPlaces}
+                      onChange={e =>
+                        setSelectedPlaces(
+                          typeof e.target.value === 'string'
+                            ? e.target.value.split(',')
+                            : e.target.value
+                        )
+                      }
+                      renderValue={selected => 
+                        placeOptions
+                          .filter(p => selected.includes(p.id))
+                          .map(p => p.name)
+                          .join(', ')
+                      }
+                      style={{ minWidth: 120, width: "100%" }}
+                      disabled={!selectedLevelIds.length || !sensorsData}
+                    >
+                      {placeOptions.map(place => (
+                        <MenuItem key={place.id} value={place.id}>
+                          <Checkbox checked={selectedPlaces.indexOf(place.id) > -1} />
+                          <ListItemText primary={place.name} />
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  )}
                 </label>
               )}
             </div>
