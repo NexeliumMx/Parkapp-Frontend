@@ -4,15 +4,16 @@ import { fetchAnalysisData } from '../httpRequests';
 /**
  * Custom hook for time-based analysis data with location filtering
  * @param {string} userId - User ID
- * @param {string} interval - Time interval: 'year', 'month', or 'day'
+ * @param {string} timeSetting - Time setting: 'year', 'month', or 'day'
  * @param {object} dateFilter - Date filter object { year, month, day }
  * @param {object} locationFilter - Location filter object
- * @param {string} locationLevel - Location level: 'parking', 'floor', or 'sensor'
+ * @param {string} locationSetting - Location setting: 'parking', 'floor', or 'sensor'
  */
-export function useAnalysisData(userId, interval, dateFilter = {}, locationFilter = {}, locationLevel = 'parking') {
+export function useAnalysisData(userId, timeSetting, dateFilter = {}, locationFilter = {}, locationSetting = 'parking') {
   const [data, setData] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [statistics, setStatistics] = useState(null);
 
   useEffect(() => {
     const loadAnalysisData = async () => {
@@ -20,54 +21,152 @@ export function useAnalysisData(userId, interval, dateFilter = {}, locationFilte
         setIsLoading(true);
         setError(null);
         
-        // Prepare date parameters based on interval
-        const dateParams = prepareDateParams(interval, dateFilter);
+        // Prepare date parameters based on timeSetting
+        const dateParams = prepareDateParams(timeSetting, dateFilter);
         
-        // Prepare location parameters based on location level
-        const locationParams = prepareLocationParams(locationLevel, locationFilter);
+        // Prepare location parameters based on locationSetting
+        const locationParams = prepareLocationParams(locationSetting, locationFilter);
         
-        const result = await fetchAnalysisData(userId, interval, dateParams, locationParams, locationLevel);
-        const processedData = processAnalysisData(result, interval, locationLevel);
-        setData(processedData);
+        // Validate that required date filters are provided
+        if (!hasRequiredDateFilters(timeSetting, dateParams)) {
+          console.log(`[Analysis Hook] Skipping API call - required ${timeSetting} date filters not selected`);
+          setData([]);
+          setStatistics(null);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Validate that required location filters are provided
+        if (!hasRequiredLocationFilters(locationSetting, locationParams)) {
+          console.log(`[Analysis Hook] Skipping API call - required ${locationSetting} location filters not selected`);
+          setData([]);
+          setStatistics(null);
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log(`[Analysis Hook] Making API call with filters:`, {
+          locationSetting,
+          locationParams,
+          dateParams,
+          timeSetting
+        });
+        
+        const result = await fetchAnalysisData(userId, timeSetting, dateParams, locationParams, locationSetting);
+        
+        if (result.success) {
+          // Use location_analysis array from new API format
+          const processedData = processApiResponse(result.location_analysis || [], timeSetting, locationSetting);
+          setData(processedData);
+          setStatistics(result.overall_statistics);
+          
+          console.log(`[Analysis Hook] Processed ${processedData.length} data points from ${result.location_analysis?.length || 0} API records`);
+        } else {
+          throw new Error(result.message || 'API returned success: false');
+        }
         
       } catch (err) {
         console.error('Error fetching analysis data:', err);
         setError(err.message);
         setData([]);
+        setStatistics(null);
       } finally {
         setIsLoading(false);
       }
     };
 
-    if (userId && interval) {
-      loadAnalysisData();
+    // Only load data if we have all required parameters
+    if (userId && timeSetting) {
+      const dateParams = prepareDateParams(timeSetting, dateFilter);
+      const locationParams = prepareLocationParams(locationSetting, locationFilter);
+      
+      if (hasRequiredDateFilters(timeSetting, dateParams) && 
+          hasRequiredLocationFilters(locationSetting, locationParams)) {
+        loadAnalysisData();
+      } else {
+        // Clear data when filters are not sufficient
+        setData([]);
+        setStatistics(null);
+        setError(null);
+        setIsLoading(false);
+      }
     } else {
       setData([]);
+      setStatistics(null);
+      setError(null);
       setIsLoading(false);
     }
-  }, [userId, interval, JSON.stringify(dateFilter), JSON.stringify(locationFilter), locationLevel]);
+  }, [userId, timeSetting, JSON.stringify(dateFilter), JSON.stringify(locationFilter), locationSetting]);
 
-  return { data, isLoading, error };
+  return { data, isLoading, error, statistics };
 }
 
 /**
- * Prepare date parameters based on interval
- * @param {string} interval - Time interval
+ * Check if required date filters are provided
+ * @param {string} timeSetting - Time setting
+ * @param {object} dateParams - Date parameters
+ * @returns {boolean} Whether required date filters are present
+ */
+function hasRequiredDateFilters(timeSetting, dateParams) {
+  switch (timeSetting) {
+    case 'year':
+      // For year analysis, year is required
+      return dateParams.year && dateParams.year !== '';
+    case 'month':
+      // For month analysis, year and month are required
+      return dateParams.year && dateParams.year !== '' &&
+             dateParams.month && dateParams.month !== '';
+    case 'day':
+      // For day analysis, year, month, and day are required
+      return dateParams.year && dateParams.year !== '' &&
+             dateParams.month && dateParams.month !== '' &&
+             dateParams.day && dateParams.day !== '';
+    default:
+      return false;
+  }
+}
+
+/**
+ * Check if required location filters are provided
+ * @param {string} locationSetting - Location setting
+ * @param {object} locationParams - Location parameters
+ * @returns {boolean} Whether required filters are present
+ */
+function hasRequiredLocationFilters(locationSetting, locationParams) {
+  switch (locationSetting) {
+    case 'parking':
+      // Require at least one parking selected
+      return locationParams.parking_ids && locationParams.parking_ids.length > 0;
+    case 'floor':
+      // Require both parking and floor selected
+      return (locationParams.parking_ids && locationParams.parking_ids.length > 0) &&
+             (locationParams.level_ids && locationParams.level_ids.length > 0);
+    case 'sensor':
+      // Require parking, floor, and sensor selected
+      return (locationParams.parking_ids && locationParams.parking_ids.length > 0) &&
+             (locationParams.level_ids && locationParams.level_ids.length > 0) &&
+             (locationParams.sensor_ids && locationParams.sensor_ids.length > 0);
+    default:
+      return false;
+  }
+}
+
+/**
+ * Prepare date parameters based on timeSetting
+ * @param {string} timeSetting - Time setting
  * @param {object} dateFilter - Date filter object
  * @returns {object} Prepared date parameters
  */
-function prepareDateParams(interval, dateFilter) {
+function prepareDateParams(timeSetting, dateFilter) {
   const params = {};
   
-  switch (interval) {
+  switch (timeSetting) {
     case 'year':
-      // For year interval, only send year
       if (dateFilter.year) {
         params.year = dateFilter.year;
       }
       break;
     case 'month':
-      // For month interval, send year and month
       if (dateFilter.year) {
         params.year = dateFilter.year;
       }
@@ -76,7 +175,6 @@ function prepareDateParams(interval, dateFilter) {
       }
       break;
     case 'day':
-      // For day interval, send year, month, and day
       if (dateFilter.year) {
         params.year = dateFilter.year;
       }
@@ -93,23 +191,21 @@ function prepareDateParams(interval, dateFilter) {
 }
 
 /**
- * Prepare location parameters based on location level
- * @param {string} locationLevel - Location level
+ * Prepare location parameters based on locationSetting
+ * @param {string} locationSetting - Location setting
  * @param {object} locationFilter - Location filter object
  * @returns {object} Prepared location parameters
  */
-function prepareLocationParams(locationLevel, locationFilter) {
+function prepareLocationParams(locationSetting, locationFilter) {
   const params = {};
   
-  switch (locationLevel) {
+  switch (locationSetting) {
     case 'parking':
-      // For parking level, only send parking_id
       if (locationFilter.parking_ids?.length) {
         params.parking_ids = locationFilter.parking_ids;
       }
       break;
     case 'floor':
-      // For floor level, send parking_id and floor
       if (locationFilter.parking_ids?.length) {
         params.parking_ids = locationFilter.parking_ids;
       }
@@ -118,7 +214,6 @@ function prepareLocationParams(locationLevel, locationFilter) {
       }
       break;
     case 'sensor':
-      // For sensor level, send parking_id, floor, and sensor_id
       if (locationFilter.parking_ids?.length) {
         params.parking_ids = locationFilter.parking_ids;
       }
@@ -135,238 +230,140 @@ function prepareLocationParams(locationLevel, locationFilter) {
 }
 
 /**
- * Process raw analysis data based on interval type and location level
- * @param {Array} rawData - Raw data from API
- * @param {string} interval - Time interval: 'year', 'month', or 'day'
- * @param {string} locationLevel - Location level: 'parking', 'floor', or 'sensor'
- * @returns {Array} Processed data with averages
+ * Process API response to match frontend expectations - UPDATED for new API format
+ * @param {Array} apiData - Data from API response (location_analysis array)
+ * @param {string} timeSetting - Time setting
+ * @param {string} locationSetting - Location setting
+ * @returns {Array} Processed data
  */
-function processAnalysisData(rawData, interval, locationLevel) {
-  if (!rawData || !Array.isArray(rawData)) return [];
+function processApiResponse(apiData, timeSetting, locationSetting) {
+  if (!apiData || !Array.isArray(apiData)) return [];
 
-  // Group data by location first, then by time
-  const groupedByLocation = groupDataByLocation(rawData, locationLevel);
-  
-  const processedData = [];
-  
-  Object.entries(groupedByLocation).forEach(([locationKey, locationData]) => {
-    let timeBasedData;
-    
-    switch (interval) {
-      case 'year':
-        timeBasedData = calculateYearlyAverages(locationData);
-        break;
-      case 'month':
-        timeBasedData = calculateMonthlyAverages(locationData);
-        break;
-      case 'day':
-        timeBasedData = calculateDailyAverages(locationData);
-        break;
-      default:
-        timeBasedData = [];
-    }
-    
-    // Add location information to each time data point
-    timeBasedData.forEach(timePoint => {
-      processedData.push({
-        ...timePoint,
-        locationKey,
-        locationName: getLocationName(locationData[0], locationLevel),
-        locationLevel
-      });
-    });
-  });
-
-  return processedData;
+  return apiData.map(item => ({
+    x: item.time_period,
+    label: getTimeLabel(item.time_period, timeSetting),
+    occupancy: item.metrics.occupancy_percentage,
+    availability: item.metrics.availability_percentage,
+    frequency: item.metrics.activity_rate || 0,
+    locationKey: getLocationKeyFromNewFormat(item.location, locationSetting),
+    locationName: getLocationNameFromNewFormat(item.location, locationSetting),
+    locationLevel: locationSetting,
+    measurements: {
+      total: item.metrics.total_measurements,
+      occupied: Math.round(item.metrics.total_measurements * item.metrics.occupancy_percentage / 100),
+      available: Math.round(item.metrics.total_measurements * item.metrics.availability_percentage / 100)
+    },
+    unique_sensors: item.metrics.unique_sensors,
+    period_start: item.metrics.period_start,
+    period_end: item.metrics.period_end,
+    state_changes: item.metrics.state_changes,
+    occupied_hours: item.metrics.occupied_hours,
+    available_hours: item.metrics.available_hours
+  }));
 }
 
 /**
- * Group data by location level (parking, floor, or sensor)
- * @param {Array} data - Raw data array
- * @param {string} locationLevel - Location level
- * @returns {object} Grouped data by location
+ * Get location key from new API format
+ * @param {object} location - Location object from new API
+ * @param {string} locationSetting - Location setting
+ * @returns {string} Location key
  */
-function groupDataByLocation(data, locationLevel) {
-  const grouped = {};
-  
-  data.forEach(record => {
-    let locationKey;
-    
-    switch (locationLevel) {
-      case 'parking':
-        locationKey = record.parking_id;
-        break;
-      case 'floor':
-        locationKey = `${record.parking_id}_${record.floor}`;
-        break;
-      case 'sensor':
-        locationKey = `${record.parking_id}_${record.floor}_${record.sensor_id}`;
-        break;
-      default:
-        locationKey = record.parking_id;
-    }
-    
-    if (!grouped[locationKey]) {
-      grouped[locationKey] = [];
-    }
-    
-    grouped[locationKey].push(record);
-  });
-  
-  return grouped;
+function getLocationKeyFromNewFormat(location, locationSetting) {
+  switch (locationSetting) {
+    case 'parking':
+      return location.parking_id;
+    case 'floor':
+      return `${location.parking_id}_${location.floor}`;
+    case 'sensor':
+      return `${location.parking_id}_${location.floor}_${location.sensor_id}`;
+    default:
+      return location.parking_id;
+  }
 }
 
 /**
- * Get location name based on location level
- * @param {object} record - Data record
- * @param {string} locationLevel - Location level
+ * Get location name from new API format
+ * @param {object} location - Location object from new API
+ * @param {string} locationSetting - Location setting
  * @returns {string} Location name
  */
-function getLocationName(record, locationLevel) {
-  if (!record) return 'Unknown';
-  
-  switch (locationLevel) {
+function getLocationNameFromNewFormat(location, locationSetting) {
+  switch (locationSetting) {
     case 'parking':
-      return record.parking_alias || record.parking_name || `Parking ${record.parking_id}`;
+      return location.parking_name || location.display_name || `Parking ${location.parking_id}`;
     case 'floor':
-      return `${record.parking_alias || 'Parking'} - ${record.floor_alias || `Piso ${record.floor}`}`;
+      return `${location.parking_name || 'Parking'} - ${location.floor_name || `Piso ${location.floor}`}`;
     case 'sensor':
-      return record.sensor_alias || `Sensor ${record.row}-${record.column}` || `Sensor ${record.sensor_id}`;
+      return location.sensor_name || location.display_name || `Sensor ${location.sensor_id}`;
+    default:
+      return location.display_name || 'Unknown';
+  }
+}
+
+/**
+ * Get time label based on time setting and period
+ * @param {number} timePeriod - Time period number
+ * @param {string} timeSetting - Time setting
+ * @returns {string} Time label
+ */
+function getTimeLabel(timePeriod, timeSetting) {
+  switch (timeSetting) {
+    case 'day':
+      return `${timePeriod.toString().padStart(2, '0')}:00`;
+    case 'month':
+      return `Día ${timePeriod}`;
+    case 'year':
+      return new Date(2000, timePeriod - 1).toLocaleString('es', { month: 'long' });
+    default:
+      return timePeriod.toString();
+  }
+}
+
+/**
+ * Get location key for grouping
+ * @param {object} locationInfo - Location info from API
+ * @param {string} locationSetting - Location setting
+ * @returns {string} Location key
+ */
+function getLocationKey(locationInfo, locationSetting) {
+  switch (locationSetting) {
+    case 'parking':
+      return locationInfo.parking_id;
+    case 'floor':
+      return `${locationInfo.parking_id}_${locationInfo.floor}`;
+    case 'sensor':
+      return `${locationInfo.parking_id}_${locationInfo.floor}_${locationInfo.sensor_id}`;
+    default:
+      return locationInfo.parking_id;
+  }
+}
+
+/**
+ * Get location name for display
+ * @param {object} locationInfo - Location info from API
+ * @param {string} locationSetting - Location setting
+ * @returns {string} Location name
+ */
+function getLocationName(locationInfo, locationSetting) {
+  switch (locationSetting) {
+    case 'parking':
+      return locationInfo.parking_alias || `Parking ${locationInfo.parking_id}`;
+    case 'floor':
+      return `${locationInfo.parking_alias || 'Parking'} - ${locationInfo.floor_alias || `Piso ${locationInfo.floor}`}`;
+    case 'sensor':
+      return locationInfo.sensor_alias || `Sensor ${locationInfo.sensor_id}`;
     default:
       return 'Unknown';
   }
 }
 
 /**
- * Calculate average frequency and availability for each month in a year
- * @param {Array} data - Raw data array for a specific location
- * @returns {Array} Monthly averages
- */
-function calculateYearlyAverages(data) {
-  const monthlyData = {};
-  
-  data.forEach(record => {
-    const date = new Date(record.timestamp);
-    const month = date.getMonth() + 1;
-    const monthKey = month.toString().padStart(2, '0');
-    
-    if (!monthlyData[monthKey]) {
-      monthlyData[monthKey] = {
-        x: month,
-        label: new Date(2000, month - 1).toLocaleString('es', { month: 'long' }),
-        frequency: [],
-        availability: [],
-        occupancy: []
-      };
-    }
-    
-    monthlyData[monthKey].frequency.push(record.frequency || 0);
-    monthlyData[monthKey].availability.push(record.availability || 0);
-    monthlyData[monthKey].occupancy.push(record.occupancy || 0);
-  });
-
-  return Object.values(monthlyData).map(month => ({
-    x: month.x,
-    label: month.label,
-    frequency: calculateAverage(month.frequency),
-    availability: calculateAverage(month.availability),
-    occupancy: calculateAverage(month.occupancy),
-    count: month.frequency.length
-  })).sort((a, b) => a.x - b.x);
-}
-
-/**
- * Calculate average frequency and availability for each day in a month
- * @param {Array} data - Raw data array for a specific location
- * @returns {Array} Daily averages
- */
-function calculateMonthlyAverages(data) {
-  const dailyData = {};
-  
-  data.forEach(record => {
-    const date = new Date(record.timestamp);
-    const day = date.getDate();
-    
-    if (!dailyData[day]) {
-      dailyData[day] = {
-        x: day,
-        label: `Día ${day}`,
-        frequency: [],
-        availability: [],
-        occupancy: []
-      };
-    }
-    
-    dailyData[day].frequency.push(record.frequency || 0);
-    dailyData[day].availability.push(record.availability || 0);
-    dailyData[day].occupancy.push(record.occupancy || 0);
-  });
-
-  return Object.values(dailyData).map(day => ({
-    x: day.x,
-    label: day.label,
-    frequency: calculateAverage(day.frequency),
-    availability: calculateAverage(day.availability),
-    occupancy: calculateAverage(day.occupancy),
-    count: day.frequency.length
-  })).sort((a, b) => a.x - b.x);
-}
-
-/**
- * Calculate average frequency and availability for each hour in a day
- * @param {Array} data - Raw data array for a specific location
- * @returns {Array} Hourly averages
- */
-function calculateDailyAverages(data) {
-  const hourlyData = {};
-  
-  data.forEach(record => {
-    const date = new Date(record.timestamp);
-    const hour = date.getHours();
-    
-    if (!hourlyData[hour]) {
-      hourlyData[hour] = {
-        x: hour,
-        label: `${hour.toString().padStart(2, '0')}:00`,
-        frequency: [],
-        availability: [],
-        occupancy: []
-      };
-    }
-    
-    hourlyData[hour].frequency.push(record.frequency || 0);
-    hourlyData[hour].availability.push(record.availability || 0);
-    hourlyData[hour].occupancy.push(record.occupancy || 0);
-  });
-
-  return Object.values(hourlyData).map(hour => ({
-    x: hour.x,
-    label: hour.label,
-    frequency: calculateAverage(hour.frequency),
-    availability: calculateAverage(hour.availability),
-    occupancy: calculateAverage(hour.occupancy),
-    count: hour.frequency.length
-  })).sort((a, b) => a.x - b.x);
-}
-
-/**
- * Calculate average from array of numbers
- * @param {Array} numbers - Array of numbers
- * @returns {number} Average value
- */
-function calculateAverage(numbers) {
-  if (!numbers || numbers.length === 0) return 0;
-  const sum = numbers.reduce((acc, val) => acc + (val || 0), 0);
-  return Number((sum / numbers.length).toFixed(2));
-}
-
-/**
- * Get time period label based on interval
- * @param {string} interval - Time interval
+ * Get time period label based on time setting
+ * @param {string} timeSetting - Time setting
  * @returns {string} Period label
  */
-export function getTimePeriodLabel(interval) {
-  switch (interval) {
+export function getTimePeriodLabel(timeSetting) {
+  switch (timeSetting) {
     case 'year':
       return 'Mes';
     case 'month':
@@ -379,7 +376,7 @@ export function getTimePeriodLabel(interval) {
 }
 
 /**
- * Transform analysis data for chart display by location
+ * Transform analysis data for chart display - UPDATED to create separate lines
  * @param {Array} analysisData - Processed analysis data
  * @param {string} metricType - 'frequency', 'availability', or 'occupancy'
  * @returns {Array} Transformed data for charts
@@ -387,11 +384,11 @@ export function getTimePeriodLabel(interval) {
 export function transformAnalysisDataForChart(analysisData, metricType = 'occupancy') {
   if (!analysisData || analysisData.length === 0) return [];
 
-  // Group by time period
+  // Group by time period, keeping separate data for each location
   const timeGroups = {};
   
   analysisData.forEach(dataPoint => {
-    const timeKey = `${dataPoint.x}_${dataPoint.label}`;
+    const timeKey = dataPoint.x.toString();
     
     if (!timeGroups[timeKey]) {
       timeGroups[timeKey] = {
@@ -400,8 +397,8 @@ export function transformAnalysisDataForChart(analysisData, metricType = 'occupa
       };
     }
     
-    // Add metric for each location
-    const locationKey = dataPoint.locationName || dataPoint.locationKey;
+    // Create a unique key for each location
+    const locationKey = sanitizeDataKey(dataPoint.locationName || dataPoint.locationKey);
     timeGroups[timeKey][`${metricType}_${locationKey}`] = dataPoint[metricType] || 0;
   });
 
@@ -409,7 +406,7 @@ export function transformAnalysisDataForChart(analysisData, metricType = 'occupa
 }
 
 /**
- * Generate chart series configuration for analysis data
+ * Generate chart series configuration for analysis data - UPDATED for multiple lines
  * @param {Array} analysisData - Analysis data
  * @param {string} metricType - 'frequency', 'availability', or 'occupancy'
  * @returns {Array} Chart series configuration
@@ -417,14 +414,29 @@ export function transformAnalysisDataForChart(analysisData, metricType = 'occupa
 export function generateAnalysisChartSeries(analysisData, metricType = 'occupancy') {
   if (!analysisData || analysisData.length === 0) return [];
 
+  // Get unique locations - each will be a separate line
   const uniqueLocations = [...new Set(analysisData.map(d => d.locationName || d.locationKey))];
-  const colors = ['#1976d2', '#dc004e', '#ed6c02', '#2e7d32', '#9c27b0', '#f57c00', '#00695c'];
+  const colors = ['#1976d2', '#dc004e', '#ed6c02', '#2e7d32', '#9c27b0', '#f57c00', '#00695c', '#795548', '#607d8b'];
 
-  return uniqueLocations.map((location, index) => ({
-    dataKey: `${metricType}_${location}`,
-    label: `${getMetricLabel(metricType)} ${location}`,
-    color: colors[index % colors.length]
-  }));
+  return uniqueLocations.map((location, index) => {
+    const sanitizedLocation = sanitizeDataKey(location);
+    return {
+      dataKey: `${metricType}_${sanitizedLocation}`,
+      label: location, // Use the actual location name as label
+      color: colors[index % colors.length]
+    };
+  });
+}
+
+/**
+ * Sanitize data key for chart compatibility
+ * @param {string} key - Key to sanitize
+ * @returns {string} Sanitized key
+ */
+function sanitizeDataKey(key) {
+  if (!key) return 'unknown';
+  // Replace spaces and special characters with underscores
+  return key.toString().replace(/[^a-zA-Z0-9]/g, '_');
 }
 
 /**
@@ -435,7 +447,7 @@ export function generateAnalysisChartSeries(analysisData, metricType = 'occupanc
 function getMetricLabel(metricType) {
   switch (metricType) {
     case 'frequency':
-      return 'Frecuencia';
+      return 'Actividad';
     case 'availability':
       return 'Disponibilidad';
     case 'occupancy':
@@ -446,11 +458,11 @@ function getMetricLabel(metricType) {
 }
 
 /**
- * Get location level from filter type
+ * Get location setting from filter type
  * @param {string} filterType - Filter type from component
- * @returns {string} Location level
+ * @returns {string} Location setting
  */
-export function getLocationLevel(filterType) {
+export function getLocationSetting(filterType) {
   switch (filterType) {
     case 'torre':
       return 'parking';
@@ -464,554 +476,131 @@ export function getLocationLevel(filterType) {
 }
 
 /**
- * Calculate summary statistics for analysis data
- * @param {Array} data - Analysis data
- * @param {string} locationLevel - Location level
- * @returns {object} Summary statistics
+ * Get time setting from period
+ * @param {string} period - Period from component
+ * @returns {string} Time setting
  */
-export function calculateSummaryStatistics(data, locationLevel) {
-  if (!data || data.length === 0) {
-    return {
-      avgFrequency: 0,
-      avgAvailability: 0,
-      avgOccupancy: 0,
-      maxFrequency: 0,
-      maxAvailability: 0,
-      maxOccupancy: 0,
-      minFrequency: 0,
-      minAvailability: 0,
-      minOccupancy: 0,
-      totalRecords: 0,
-      uniqueLocations: 0,
-      locationLevel
-    };
+export function getTimeSetting(period) {
+  switch (period) {
+    case 'anual':
+      return 'year';
+    case 'mensual':
+      return 'month';
+    case 'diario':
+      return 'day';
+    default:
+      return 'day';
   }
-
-  const frequencies = data.map(d => d.frequency || 0);
-  const availabilities = data.map(d => d.availability || 0);
-  const occupancies = data.map(d => d.occupancy || 0);
-  const uniqueLocations = [...new Set(data.map(d => d.locationKey))];
-
-  return {
-    avgFrequency: calculateAverage(frequencies),
-    avgAvailability: calculateAverage(availabilities),
-    avgOccupancy: calculateAverage(occupancies),
-    maxFrequency: Math.max(...frequencies),
-    maxAvailability: Math.max(...availabilities),
-    maxOccupancy: Math.max(...occupancies),
-    minFrequency: Math.min(...frequencies),
-    minAvailability: Math.min(...availabilities),
-    minOccupancy: Math.min(...occupancies),
-    totalRecords: data.reduce((sum, d) => sum + (d.count || 0), 0),
-    uniqueLocations: uniqueLocations.length,
-    locationLevel
-  };
-}import { useState, useEffect } from 'react';
-import { fetchAnalysisData } from '../httpRequests';
-
-/**
- * Custom hook for time-based analysis data with location filtering
- * @param {string} userId - User ID
- * @param {string} interval - Time interval: 'year', 'month', or 'day'
- * @param {object} dateFilter - Date filter object { year, month, day }
- * @param {object} locationFilter - Location filter object
- * @param {string} locationLevel - Location level: 'parking', 'floor', or 'sensor'
- */
-export function useAnalysisData(userId, interval, dateFilter = {}, locationFilter = {}, locationLevel = 'parking') {
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const loadAnalysisData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Prepare date parameters based on interval
-        const dateParams = prepareDateParams(interval, dateFilter);
-        
-        // Prepare location parameters based on location level
-        const locationParams = prepareLocationParams(locationLevel, locationFilter);
-        
-        const result = await fetchAnalysisData(userId, interval, dateParams, locationParams, locationLevel);
-        const processedData = processAnalysisData(result, interval, locationLevel);
-        setData(processedData);
-        
-      } catch (err) {
-        console.error('Error fetching analysis data:', err);
-        setError(err.message);
-        setData([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    if (userId && interval) {
-      loadAnalysisData();
-    } else {
-      setData([]);
-      setIsLoading(false);
-    }
-  }, [userId, interval, JSON.stringify(dateFilter), JSON.stringify(locationFilter), locationLevel]);
-
-  return { data, isLoading, error };
 }
 
 /**
- * Prepare date parameters based on interval
- * @param {string} interval - Time interval
+ * Calculate summary statistics for analysis data - UPDATED for new API format
+ * @param {Array} data - Analysis data
+ * @param {object} apiStatistics - Statistics from API
+ * @returns {object} Summary statistics
+ */
+export function calculateSummaryStatistics(data, apiStatistics) {
+  if (!data || data.length === 0 || !apiStatistics) {
+    return {
+      avgOccupancy: 0,
+      avgAvailability: 0,
+      avgActivity: 0,
+      totalMeasurements: 0,
+      uniqueSensors: 0,
+      uniqueLocations: 0,
+      executionTime: 0
+    };
+  }
+
+  return {
+    avgOccupancy: apiStatistics.average_occupancy_percentage || 0,
+    avgAvailability: apiStatistics.average_availability_percentage || 0,
+    avgActivity: data.reduce((sum, d) => sum + (d.frequency || 0), 0) / data.length,
+    totalMeasurements: apiStatistics.total_measurements || 0,
+    uniqueSensors: apiStatistics.total_unique_sensors || 0,
+    uniqueLocations: apiStatistics.total_locations_analyzed || 0,
+    executionTime: apiStatistics.query_execution_time_ms || 0
+  };
+}
+
+/**
+ * Get validation message for missing filters
+ * @param {string} locationSetting - Location setting
+ * @param {object} locationParams - Location parameters
+ * @param {string} timeSetting - Time setting
+ * @param {object} dateParams - Date parameters
+ * @returns {string} Validation message
+ */
+export function getFilterValidationMessage(locationSetting, locationParams, timeSetting, dateParams) {
+  // Check date filters first
+  if (!hasRequiredDateFilters(timeSetting, dateParams)) {
+    switch (timeSetting) {
+      case 'year':
+        return 'Seleccione un año para ver los datos';
+      case 'month':
+        if (!dateParams.year || dateParams.year === '') {
+          return 'Seleccione un año para ver los datos mensuales';
+        }
+        if (!dateParams.month || dateParams.month === '') {
+          return 'Seleccione un mes para ver los datos';
+        }
+        break;
+      case 'day':
+        if (!dateParams.year || dateParams.year === '') {
+          return 'Seleccione un año para ver los datos diarios';
+        }
+        if (!dateParams.month || dateParams.month === '') {
+          return 'Seleccione un mes para ver los datos diarios';
+        }
+        if (!dateParams.day || dateParams.day === '') {
+          return 'Seleccione un día para ver los datos';
+        }
+        break;
+    }
+  }
+
+  // Check location filters
+  switch (locationSetting) {
+    case 'parking':
+      if (!locationParams.parking_ids || locationParams.parking_ids.length === 0) {
+        return 'Seleccione al menos una torre para ver los datos';
+      }
+      break;
+    case 'floor':
+      if (!locationParams.parking_ids || locationParams.parking_ids.length === 0) {
+        return 'Seleccione una torre para ver los datos de nivel';
+      }
+      if (!locationParams.level_ids || locationParams.level_ids.length === 0) {
+        return 'Seleccione al menos un nivel para ver los datos';
+      }
+      break;
+    case 'sensor':
+      if (!locationParams.parking_ids || locationParams.parking_ids.length === 0) {
+        return 'Seleccione una torre para ver los datos de sensor';
+      }
+      if (!locationParams.level_ids || locationParams.level_ids.length === 0) {
+        return 'Seleccione un nivel para ver los datos de sensor';
+      }
+      if (!locationParams.sensor_ids || locationParams.sensor_ids.length === 0) {
+        return 'Seleccione al menos un sensor para ver los datos';
+      }
+      break;
+  }
+  return 'Seleccione los filtros apropiados para ver los datos';
+}
+
+/**
+ * Check if filters are valid for the current location and time settings
+ * @param {string} locationSetting - Location setting
+ * @param {object} locationFilter - Location filter object
+ * @param {string} timeSetting - Time setting
  * @param {object} dateFilter - Date filter object
- * @returns {object} Prepared date parameters
+ * @returns {boolean} Whether filters are valid
  */
-function prepareDateParams(interval, dateFilter) {
-  const params = {};
+export function areFiltersValid(locationSetting, locationFilter, timeSetting, dateFilter) {
+  const locationParams = prepareLocationParams(locationSetting, locationFilter);
+  const dateParams = prepareDateParams(timeSetting, dateFilter);
   
-  switch (interval) {
-    case 'year':
-      // For year interval, only send year
-      if (dateFilter.year) {
-        params.year = dateFilter.year;
-      }
-      break;
-    case 'month':
-      // For month interval, send year and month
-      if (dateFilter.year) {
-        params.year = dateFilter.year;
-      }
-      if (dateFilter.month) {
-        params.month = dateFilter.month;
-      }
-      break;
-    case 'day':
-      // For day interval, send year, month, and day
-      if (dateFilter.year) {
-        params.year = dateFilter.year;
-      }
-      if (dateFilter.month) {
-        params.month = dateFilter.month;
-      }
-      if (dateFilter.day) {
-        params.day = dateFilter.day;
-      }
-      break;
-  }
-  
-  return params;
-}
-
-/**
- * Prepare location parameters based on location level
- * @param {string} locationLevel - Location level
- * @param {object} locationFilter - Location filter object
- * @returns {object} Prepared location parameters
- */
-function prepareLocationParams(locationLevel, locationFilter) {
-  const params = {};
-  
-  switch (locationLevel) {
-    case 'parking':
-      // For parking level, only send parking_id
-      if (locationFilter.parking_ids?.length) {
-        params.parking_ids = locationFilter.parking_ids;
-      }
-      break;
-    case 'floor':
-      // For floor level, send parking_id and floor
-      if (locationFilter.parking_ids?.length) {
-        params.parking_ids = locationFilter.parking_ids;
-      }
-      if (locationFilter.level_ids?.length) {
-        params.level_ids = locationFilter.level_ids;
-      }
-      break;
-    case 'sensor':
-      // For sensor level, send parking_id, floor, and sensor_id
-      if (locationFilter.parking_ids?.length) {
-        params.parking_ids = locationFilter.parking_ids;
-      }
-      if (locationFilter.level_ids?.length) {
-        params.level_ids = locationFilter.level_ids;
-      }
-      if (locationFilter.sensor_ids?.length) {
-        params.sensor_ids = locationFilter.sensor_ids;
-      }
-      break;
-  }
-  
-  return params;
-}
-
-/**
- * Process raw analysis data based on interval type and location level
- * @param {Array} rawData - Raw data from API
- * @param {string} interval - Time interval: 'year', 'month', or 'day'
- * @param {string} locationLevel - Location level: 'parking', 'floor', or 'sensor'
- * @returns {Array} Processed data with averages
- */
-function processAnalysisData(rawData, interval, locationLevel) {
-  if (!rawData || !Array.isArray(rawData)) return [];
-
-  // Group data by location first, then by time
-  const groupedByLocation = groupDataByLocation(rawData, locationLevel);
-  
-  const processedData = [];
-  
-  Object.entries(groupedByLocation).forEach(([locationKey, locationData]) => {
-    let timeBasedData;
-    
-    switch (interval) {
-      case 'year':
-        timeBasedData = calculateYearlyAverages(locationData);
-        break;
-      case 'month':
-        timeBasedData = calculateMonthlyAverages(locationData);
-        break;
-      case 'day':
-        timeBasedData = calculateDailyAverages(locationData);
-        break;
-      default:
-        timeBasedData = [];
-    }
-    
-    // Add location information to each time data point
-    timeBasedData.forEach(timePoint => {
-      processedData.push({
-        ...timePoint,
-        locationKey,
-        locationName: getLocationName(locationData[0], locationLevel),
-        locationLevel
-      });
-    });
-  });
-
-  return processedData;
-}
-
-/**
- * Group data by location level (parking, floor, or sensor)
- * @param {Array} data - Raw data array
- * @param {string} locationLevel - Location level
- * @returns {object} Grouped data by location
- */
-function groupDataByLocation(data, locationLevel) {
-  const grouped = {};
-  
-  data.forEach(record => {
-    let locationKey;
-    
-    switch (locationLevel) {
-      case 'parking':
-        locationKey = record.parking_id;
-        break;
-      case 'floor':
-        locationKey = `${record.parking_id}_${record.floor}`;
-        break;
-      case 'sensor':
-        locationKey = `${record.parking_id}_${record.floor}_${record.sensor_id}`;
-        break;
-      default:
-        locationKey = record.parking_id;
-    }
-    
-    if (!grouped[locationKey]) {
-      grouped[locationKey] = [];
-    }
-    
-    grouped[locationKey].push(record);
-  });
-  
-  return grouped;
-}
-
-/**
- * Get location name based on location level
- * @param {object} record - Data record
- * @param {string} locationLevel - Location level
- * @returns {string} Location name
- */
-function getLocationName(record, locationLevel) {
-  if (!record) return 'Unknown';
-  
-  switch (locationLevel) {
-    case 'parking':
-      return record.parking_alias || record.parking_name || `Parking ${record.parking_id}`;
-    case 'floor':
-      return `${record.parking_alias || 'Parking'} - ${record.floor_alias || `Piso ${record.floor}`}`;
-    case 'sensor':
-      return record.sensor_alias || `Sensor ${record.row}-${record.column}` || `Sensor ${record.sensor_id}`;
-    default:
-      return 'Unknown';
-  }
-}
-
-/**
- * Calculate average frequency and availability for each month in a year
- * @param {Array} data - Raw data array for a specific location
- * @returns {Array} Monthly averages
- */
-function calculateYearlyAverages(data) {
-  const monthlyData = {};
-  
-  data.forEach(record => {
-    const date = new Date(record.timestamp);
-    const month = date.getMonth() + 1;
-    const monthKey = month.toString().padStart(2, '0');
-    
-    if (!monthlyData[monthKey]) {
-      monthlyData[monthKey] = {
-        x: month,
-        label: new Date(2000, month - 1).toLocaleString('es', { month: 'long' }),
-        frequency: [],
-        availability: [],
-        occupancy: []
-      };
-    }
-    
-    monthlyData[monthKey].frequency.push(record.frequency || 0);
-    monthlyData[monthKey].availability.push(record.availability || 0);
-    monthlyData[monthKey].occupancy.push(record.occupancy || 0);
-  });
-
-  return Object.values(monthlyData).map(month => ({
-    x: month.x,
-    label: month.label,
-    frequency: calculateAverage(month.frequency),
-    availability: calculateAverage(month.availability),
-    occupancy: calculateAverage(month.occupancy),
-    count: month.frequency.length
-  })).sort((a, b) => a.x - b.x);
-}
-
-/**
- * Calculate average frequency and availability for each day in a month
- * @param {Array} data - Raw data array for a specific location
- * @returns {Array} Daily averages
- */
-function calculateMonthlyAverages(data) {
-  const dailyData = {};
-  
-  data.forEach(record => {
-    const date = new Date(record.timestamp);
-    const day = date.getDate();
-    
-    if (!dailyData[day]) {
-      dailyData[day] = {
-        x: day,
-        label: `Día ${day}`,
-        frequency: [],
-        availability: [],
-        occupancy: []
-      };
-    }
-    
-    dailyData[day].frequency.push(record.frequency || 0);
-    dailyData[day].availability.push(record.availability || 0);
-    dailyData[day].occupancy.push(record.occupancy || 0);
-  });
-
-  return Object.values(dailyData).map(day => ({
-    x: day.x,
-    label: day.label,
-    frequency: calculateAverage(day.frequency),
-    availability: calculateAverage(day.availability),
-    occupancy: calculateAverage(day.occupancy),
-    count: day.frequency.length
-  })).sort((a, b) => a.x - b.x);
-}
-
-/**
- * Calculate average frequency and availability for each hour in a day
- * @param {Array} data - Raw data array for a specific location
- * @returns {Array} Hourly averages
- */
-function calculateDailyAverages(data) {
-  const hourlyData = {};
-  
-  data.forEach(record => {
-    const date = new Date(record.timestamp);
-    const hour = date.getHours();
-    
-    if (!hourlyData[hour]) {
-      hourlyData[hour] = {
-        x: hour,
-        label: `${hour.toString().padStart(2, '0')}:00`,
-        frequency: [],
-        availability: [],
-        occupancy: []
-      };
-    }
-    
-    hourlyData[hour].frequency.push(record.frequency || 0);
-    hourlyData[hour].availability.push(record.availability || 0);
-    hourlyData[hour].occupancy.push(record.occupancy || 0);
-  });
-
-  return Object.values(hourlyData).map(hour => ({
-    x: hour.x,
-    label: hour.label,
-    frequency: calculateAverage(hour.frequency),
-    availability: calculateAverage(hour.availability),
-    occupancy: calculateAverage(hour.occupancy),
-    count: hour.frequency.length
-  })).sort((a, b) => a.x - b.x);
-}
-
-/**
- * Calculate average from array of numbers
- * @param {Array} numbers - Array of numbers
- * @returns {number} Average value
- */
-function calculateAverage(numbers) {
-  if (!numbers || numbers.length === 0) return 0;
-  const sum = numbers.reduce((acc, val) => acc + (val || 0), 0);
-  return Number((sum / numbers.length).toFixed(2));
-}
-
-/**
- * Get time period label based on interval
- * @param {string} interval - Time interval
- * @returns {string} Period label
- */
-export function getTimePeriodLabel(interval) {
-  switch (interval) {
-    case 'year':
-      return 'Mes';
-    case 'month':
-      return 'Día';
-    case 'day':
-      return 'Hora';
-    default:
-      return 'Período';
-  }
-}
-
-/**
- * Transform analysis data for chart display by location
- * @param {Array} analysisData - Processed analysis data
- * @param {string} metricType - 'frequency', 'availability', or 'occupancy'
- * @returns {Array} Transformed data for charts
- */
-export function transformAnalysisDataForChart(analysisData, metricType = 'occupancy') {
-  if (!analysisData || analysisData.length === 0) return [];
-
-  // Group by time period
-  const timeGroups = {};
-  
-  analysisData.forEach(dataPoint => {
-    const timeKey = `${dataPoint.x}_${dataPoint.label}`;
-    
-    if (!timeGroups[timeKey]) {
-      timeGroups[timeKey] = {
-        x: dataPoint.x,
-        label: dataPoint.label
-      };
-    }
-    
-    // Add metric for each location
-    const locationKey = dataPoint.locationName || dataPoint.locationKey;
-    timeGroups[timeKey][`${metricType}_${locationKey}`] = dataPoint[metricType] || 0;
-  });
-
-  return Object.values(timeGroups).sort((a, b) => a.x - b.x);
-}
-
-/**
- * Generate chart series configuration for analysis data
- * @param {Array} analysisData - Analysis data
- * @param {string} metricType - 'frequency', 'availability', or 'occupancy'
- * @returns {Array} Chart series configuration
- */
-export function generateAnalysisChartSeries(analysisData, metricType = 'occupancy') {
-  if (!analysisData || analysisData.length === 0) return [];
-
-  const uniqueLocations = [...new Set(analysisData.map(d => d.locationName || d.locationKey))];
-  const colors = ['#1976d2', '#dc004e', '#ed6c02', '#2e7d32', '#9c27b0', '#f57c00', '#00695c'];
-
-  return uniqueLocations.map((location, index) => ({
-    dataKey: `${metricType}_${location}`,
-    label: `${getMetricLabel(metricType)} ${location}`,
-    color: colors[index % colors.length]
-  }));
-}
-
-/**
- * Get metric label in Spanish
- * @param {string} metricType - Metric type
- * @returns {string} Metric label
- */
-function getMetricLabel(metricType) {
-  switch (metricType) {
-    case 'frequency':
-      return 'Frecuencia';
-    case 'availability':
-      return 'Disponibilidad';
-    case 'occupancy':
-      return 'Ocupación';
-    default:
-      return 'Métrica';
-  }
-}
-
-/**
- * Get location level from filter type
- * @param {string} filterType - Filter type from component
- * @returns {string} Location level
- */
-export function getLocationLevel(filterType) {
-  switch (filterType) {
-    case 'torre':
-      return 'parking';
-    case 'nivel':
-      return 'floor';
-    case 'sensor':
-      return 'sensor';
-    default:
-      return 'parking';
-  }
-}
-
-/**
- * Calculate summary statistics for analysis data
- * @param {Array} data - Analysis data
- * @param {string} locationLevel - Location level
- * @returns {object} Summary statistics
- */
-export function calculateSummaryStatistics(data, locationLevel) {
-  if (!data || data.length === 0) {
-    return {
-      avgFrequency: 0,
-      avgAvailability: 0,
-      avgOccupancy: 0,
-      maxFrequency: 0,
-      maxAvailability: 0,
-      maxOccupancy: 0,
-      minFrequency: 0,
-      minAvailability: 0,
-      minOccupancy: 0,
-      totalRecords: 0,
-      uniqueLocations: 0,
-      locationLevel
-    };
-  }
-
-  const frequencies = data.map(d => d.frequency || 0);
-  const availabilities = data.map(d => d.availability || 0);
-  const occupancies = data.map(d => d.occupancy || 0);
-  const uniqueLocations = [...new Set(data.map(d => d.locationKey))];
-
-  return {
-    avgFrequency: calculateAverage(frequencies),
-    avgAvailability: calculateAverage(availabilities),
-    avgOccupancy: calculateAverage(occupancies),
-    maxFrequency: Math.max(...frequencies),
-    maxAvailability: Math.max(...availabilities),
-    maxOccupancy: Math.max(...occupancies),
-    minFrequency: Math.min(...frequencies),
-    minAvailability: Math.min(...availabilities),
-    minOccupancy: Math.min(...occupancies),
-    totalRecords: data.reduce((sum, d) => sum + (d.count || 0), 0),
-    uniqueLocations: uniqueLocations.length,
-    locationLevel
-  };
+  return hasRequiredDateFilters(timeSetting, dateParams) && 
+         hasRequiredLocationFilters(locationSetting, locationParams);
 }

@@ -98,3 +98,63 @@ export async function fetchAvailableDates(userId, filters = {}) {
     throw new Error(`Failed to fetch available dates: ${error.message}`);
   }
 }
+
+export async function fetchAnalysisData(userId, timeSetting, dateParams = {}, locationParams = {}, locationSetting = 'parking') {
+  const params = new URLSearchParams();
+  params.append('user_id', userId);
+  params.append('timeSetting', timeSetting);
+  params.append('locationSetting', locationSetting);
+
+  // Add date parameters based on timeSetting
+  if (dateParams.year) {
+    params.append('year', dateParams.year);
+  }
+  if (dateParams.month && (timeSetting === 'month' || timeSetting === 'day')) {
+    params.append('month', dateParams.month);
+  }
+  if (dateParams.day && timeSetting === 'day') {
+    params.append('day', dateParams.day);
+  }
+
+  // Add location parameters based on locationSetting
+  if (locationSetting === 'parking' && locationParams.parking_ids?.length) {
+    params.append('parking_id', locationParams.parking_ids.join(','));
+  }
+  if (locationSetting === 'floor') {
+    if (locationParams.parking_ids?.length) {
+      params.append('parking_id', locationParams.parking_ids.join(','));
+    }
+    if (locationParams.level_ids?.length) {
+      params.append('floor', locationParams.level_ids.join(','));
+    }
+  }
+  if (locationSetting === 'sensor') {
+    if (locationParams.parking_ids?.length) {
+      params.append('parking_id', locationParams.parking_ids.join(','));
+    }
+    if (locationParams.level_ids?.length) {
+      params.append('floor', locationParams.level_ids.join(','));
+    }
+    if (locationParams.sensor_ids?.length) {
+      params.append('sensor', locationParams.sensor_ids.join(','));
+    }
+  }
+
+  const url = `http://localhost:7071/api/getAnalysis?${params}`;
+  console.log(`[API CALL] fetchAnalysisData: ${url}`);
+  
+  try {
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const resData = await response.json();
+    return resData;
+
+  } catch (error) {
+    console.error('Error in fetchAnalysisData:', error);
+    throw new Error(`Failed to fetch analysis data: ${error.message}`);
+  }
+}

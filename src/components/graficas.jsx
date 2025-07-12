@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import './graficas.css';
 import { LineChart } from '@mui/x-charts/LineChart';
 import Button from '@mui/material/Button';
@@ -13,6 +13,17 @@ import Typography from '@mui/material/Typography';
 import { useFetchLevelsbyUser } from '../api/hooks/useLevelbyUser';
 import { useFetchSensorsByLevel } from '../api/hooks/useSensorByLevel';
 import { useValidYears, useValidMonths, useValidDays } from '../api/hooks/useValidDates';
+import { 
+  useAnalysisData, 
+  getTimePeriodLabel, 
+  generateAnalysisChartSeries, 
+  transformAnalysisDataForChart, 
+  getLocationSetting,
+  getTimeSetting,
+  calculateSummaryStatistics,
+  areFiltersValid,
+  getFilterValidationMessage
+} from '../api/hooks/analysis';
 
 const flattenLevelsData = (data) => {
   if (!data || !Array.isArray(data)) return [];
@@ -150,6 +161,57 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
     return getUniquePlaces(sensorsData, selectedPlaces);
   }, [sensorsData, selectedPlaces]);
 
+  const locationSetting = getLocationSetting(filter); // 'torre' -> 'parking'
+  const timeSetting = getTimeSetting(period); // 'anual' -> 'year'
+
+  const { 
+    data: analysisData,           // ← Rename 'data' to 'analysisData'
+    isLoading: analysisLoading, 
+    error: analysisError, 
+    statistics 
+  } = useAnalysisData(
+    user_id,                      // Make sure this variable exists
+    timeSetting,                  // Make sure this variable exists
+    { year, month, day },         // Make sure these variables exist
+    { 
+      parking_ids: selectedParkingIds, 
+      level_ids: selectedLevelIds, 
+      sensor_ids: selectedPlaces 
+    },
+    locationSetting               // Make sure this variable exists
+  );
+
+  // 2. ✅ All useMemo hooks should come AFTER the useAnalysisData hook
+  const occupancyChartData = useMemo(() => {
+    if (!analysisData || analysisData.length === 0) return [];
+    return transformAnalysisDataForChart(analysisData, 'occupancy');
+  }, [analysisData]);
+
+  const occupancySeries = useMemo(() => {
+    if (!analysisData || analysisData.length === 0) return [];
+    return generateAnalysisChartSeries(analysisData, 'occupancy');
+  }, [analysisData]);
+
+  const activityChartData = useMemo(() => {
+    if (!analysisData || analysisData.length === 0) return [];
+    return transformAnalysisDataForChart(analysisData, 'frequency');
+  }, [analysisData]);
+
+  const activitySeries = useMemo(() => {
+    if (!analysisData || analysisData.length === 0) return [];
+    return generateAnalysisChartSeries(analysisData, 'frequency');
+  }, [analysisData]);
+
+  // 3. ✅ Debug useEffect should come AFTER all the above
+  useEffect(() => {
+    console.log('=== ANALYSIS DATA DEBUG ===');
+    console.log('Raw analysis data:', analysisData?.slice(0, 3));
+    console.log('Occupancy chart data:', occupancyChartData?.slice(0, 3));
+    console.log('Occupancy series:', occupancySeries);
+    console.log('Statistics:', statistics);
+    console.log('===========================');
+  }, [analysisData, occupancyChartData, occupancySeries, statistics]);
+
   React.useEffect(() => {
     setSelectedLevelIds([]);
     setSelectedPlaces([]);
@@ -248,80 +310,7 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
             className="filtros-superiores-row"
             style={{ width: "100%", display: "flex", gap: 24 }}
           >
-            <div
-              className="filtros-fecha mitad"
-              style={{
-                flex: 1,
-                width: "100%",
-                display: "flex",
-                gap: 24,
-                minWidth: 0,
-              }}
-            >
-              {/* Año */}
-              <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
-                Año {yearsLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
-                <FormControl fullWidth>
-                  <Select
-                    value={year}
-                    onChange={e => setYear(e.target.value)}
-                    style={{ width: "100%" }}
-                    disabled={yearsLoading}
-                  >
-                    <MenuItem value="">Todos</MenuItem>
-                    {years.map(yearOption => (
-                      <MenuItem key={yearOption} value={yearOption.toString()}>
-                        {yearOption}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </label>
-              {/* Mes */}
-              {(period === 'mensual' || period === 'diario') && (
-                <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
-                  Mes {monthsLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
-                  <FormControl fullWidth>
-                    <Select
-                      value={month}
-                      onChange={e => setMonth(e.target.value)}
-                      style={{ width: "100%" }}
-                      disabled={monthsLoading || !year}
-                    >
-                      <MenuItem value="">Todos</MenuItem>
-                      {months.map(monthOption => (
-                        <MenuItem key={monthOption} value={monthOption.toString()}>
-                          {new Date(2000, monthOption - 1).toLocaleString('es', { month: 'long' })}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </label>
-              )}
-              {/* Día */}
-              {period === 'diario' && (
-                <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
-                  Día {daysLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
-                  <FormControl fullWidth>
-                    <Select
-                      value={day}
-                      onChange={e => setDay(e.target.value)}
-                      style={{ width: "100%" }}
-                      disabled={daysLoading || !year || !month}
-                    >
-                      <MenuItem value="">Todos</MenuItem>
-                      {days.map(dayOption => (
-                        <MenuItem key={dayOption} value={dayOption.toString()}>
-                          {dayOption}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </label>
-              )}
-            </div>
-            {/* Separador vertical */}
-            <div className="filtros-separador-vertical" />
+            {/* MOVED: Location filters to the LEFT */}
             <div
               className="filtros-ubicacion mitad"
               style={{
@@ -427,7 +416,7 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
                   )}
                 </label>
               )}
-              {/* Lugar - UPDATED TO USE REAL SENSORS DATA */}
+              {/* Lugar - SENSORS */}
               {filter === 'sensor' && (
                 <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
                   Lugar
@@ -470,6 +459,83 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
                 </label>
               )}
             </div>
+            
+            {/* Separador vertical */}
+            <div className="filtros-separador-vertical" />
+            
+            {/* MOVED: Date filters to the RIGHT */}
+            <div
+              className="filtros-fecha mitad"
+              style={{
+                flex: 1,
+                width: "100%",
+                display: "flex",
+                gap: 24,
+                minWidth: 0,
+              }}
+            >
+              {/* Año */}
+              <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
+                Año {yearsLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
+                <FormControl fullWidth>
+                  <Select
+                    value={year}
+                    onChange={e => setYear(e.target.value)}
+                    style={{ width: "100%" }}
+                    disabled={yearsLoading}
+                  >
+                    <MenuItem value="">Todos</MenuItem>
+                    {years.map(yearOption => (
+                      <MenuItem key={yearOption} value={yearOption.toString()}>
+                        {yearOption}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </label>
+              {/* Mes */}
+              {(period === 'mensual' || period === 'diario') && (
+                <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
+                  Mes {monthsLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
+                  <FormControl fullWidth>
+                    <Select
+                      value={month}
+                      onChange={e => setMonth(e.target.value)}
+                      style={{ width: "100%" }}
+                      disabled={monthsLoading || !year}
+                    >
+                      <MenuItem value="">Todos</MenuItem>
+                      {months.map(monthOption => (
+                        <MenuItem key={monthOption} value={monthOption.toString()}>
+                          {new Date(2000, monthOption - 1).toLocaleString('es', { month: 'long' })}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </label>
+              )}
+              {/* Día */}
+              {period === 'diario' && (
+                <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
+                  Día {daysLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
+                  <FormControl fullWidth>
+                    <Select
+                      value={day}
+                      onChange={e => setDay(e.target.value)}
+                      style={{ width: "100%" }}
+                      disabled={daysLoading || !year || !month}
+                    >
+                      <MenuItem value="">Todos</MenuItem>
+                      {days.map(dayOption => (
+                        <MenuItem key={dayOption} value={dayOption.toString()}>
+                          {dayOption}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </label>
+              )}
+            </div>
           </div>
         </div>
         {/* Gráficas después de los filtros */}
@@ -479,36 +545,113 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
               variant="h6" 
               align="left" 
               gutterBottom
-              sx={{ fontWeight: 700, fontSize: 24, pl:10 }}
+              sx={{ fontWeight: 700, fontSize: 24, pl: 10 }}
             >
               Porcentaje de ocupación
             </Typography>
-            <LineChart
-              width={600}
-              height={300}
-              dataset={datosSimuladosMulti}
-              series={seriesOcupacion}
-              xAxis={[{ dataKey: 'x', label: period === 'anual' ? 'Mes' : period === 'mensual' ? 'Día' : 'Hora' }]}
-              yAxis={[{ label: 'Porcentaje' }]}
-            />
+            
+            {/* Show loading, validation, error, or data states */}
+            {analysisLoading ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                Cargando datos de ocupación...
+              </div>
+            ) : !areFiltersValid(
+                locationSetting, 
+                { 
+                  parking_ids: selectedParkingIds, 
+                  level_ids: selectedLevelIds, 
+                  sensor_ids: selectedPlaces 
+                },
+                timeSetting,
+                { year, month, day }
+              ) ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                {getFilterValidationMessage(
+                  locationSetting, 
+                  { 
+                    parking_ids: selectedParkingIds, 
+                    level_ids: selectedLevelIds, 
+                    sensor_ids: selectedPlaces 
+                  },
+                  timeSetting,
+                  { year, month, day }
+                )}
+              </div>
+            ) : analysisError ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'red' }}>
+                Error: {analysisError}
+              </div>
+            ) : occupancyChartData.length === 0 ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                No hay datos disponibles para los filtros seleccionados
+              </div>
+            ) : (
+              <LineChart
+                width={600}
+                height={300}
+                dataset={occupancyChartData}  // ← Now creates separate lines for each location
+                series={occupancySeries}      // ← Each location gets its own series
+                xAxis={[{ dataKey: 'x', label: getTimePeriodLabel(timeSetting) }]}
+                yAxis={[{ label: 'Porcentaje' }]}
+              />
+            )}
           </div>
-          <div>
+          
+          <div style={{ width: 600, margin: '0 auto' }}>
             <Typography 
               variant="h6" 
               align="left" 
               gutterBottom
-              sx={{ fontWeight: 700, fontSize: 24, pl:10 }}
+              sx={{ fontWeight: 700, fontSize: 24, pl: 10 }}
             >
-              Frecuencia de rotación
+              Actividad de sensores
             </Typography>
-            <LineChart
-              width={600}
-              height={300}
-              dataset={datosSimuladosMulti}
-              series={seriesRotacion}
-              xAxis={[{ dataKey: 'x', label: period === 'anual' ? 'Mes' : period === 'mensual' ? 'Día' : 'Hora' }]}
-              yAxis={[{ label: 'Frecuencia' }]}
-            />
+            
+            {/* Same validation logic for activity chart */}
+            {analysisLoading ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                Cargando datos de actividad...
+              </div>
+            ) : !areFiltersValid(
+                locationSetting, 
+                { 
+                  parking_ids: selectedParkingIds, 
+                  level_ids: selectedLevelIds, 
+                  sensor_ids: selectedPlaces 
+                },
+                timeSetting,
+                { year, month, day }
+              ) ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                {getFilterValidationMessage(
+                  locationSetting, 
+                  { 
+                    parking_ids: selectedParkingIds, 
+                    level_ids: selectedLevelIds, 
+                    sensor_ids: selectedPlaces 
+                  },
+                  timeSetting,
+                  { year, month, day }
+                )}
+              </div>
+            ) : analysisError ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'red' }}>
+                Error: {analysisError}
+              </div>
+            ) : activityChartData.length === 0 ? (
+              <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
+                No hay datos disponibles para los filtros seleccionados
+              </div>
+            ) : (
+              <LineChart
+                width={600}
+                height={300}
+                dataset={activityChartData}   // ← Now creates separate lines for each location
+                series={activitySeries}       // ← Each location gets its own series
+                xAxis={[{ dataKey: 'x', label: getTimePeriodLabel(timeSetting) }]}
+                yAxis={[{ label: 'Actividad' }]}
+              />
+            )}
           </div>
         </div>
         {/* Botones al final */}
