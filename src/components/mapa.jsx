@@ -11,6 +11,10 @@ import parkingImage from "../assets/map_testing/background-image.jpeg";
 import mapStageData from "../assets/map_testing/stage.json";
 import mapObjectsData from "../assets/map_testing/objects.json";
 import constSensorData from "../assets/map_testing/sensors.json";
+import { useLevelImage } from '../api/hooks/useLevelImage';
+import { useFetchLevelsbyUser } from '../api/hooks/useLevelbyUser';
+
+const user_id = "fb713fca-4cbc-44b1-8a25-c6685c3efd31";
 
 mapObjectsData.forEach(obj => {
   const found = constSensorData.some(sensor => sensor.linkedKonvaId === obj.id);
@@ -43,8 +47,28 @@ const Mapa = () => {
   const [hourTo, setHourTo] = useState('');
   const [period, setPeriod] = useState('tiempo-real'); // 'tiempo-real', 'rotacion', 'ocupacion'
   // Example options for torre and nivel
-  const torres = ['Torre 1', 'Torre 2', 'Torre 3'];
-  const niveles = ['Nivel 1', 'Nivel 2', 'Nivel 3'];
+
+
+  // Custom hook usage
+  //const { imageData, loading, error } = useLevelImage(selectedTorre, selectedNivel);
+  // Fetch parkings/levels for user
+  const { data: userLevels, isLoading: userLevelsLoading, error: userLevelsError } = useFetchLevelsbyUser(user_id);
+
+  // Get torres (parkings) from userLevels
+  const torres = userLevels ? userLevels.map(p => ({
+    parking_id: p.parking_id,
+    parking_alias: p.parking_alias,
+    complex: p.complex
+  })) : [];
+
+  // Get niveles (floors) for the selected torre
+  const niveles = userLevels && selectedTorre
+    ? (userLevels.find(p => p.parking_id === selectedTorre)?.levels || [])
+    : [];
+
+  // Use image hook with selected torre and nivel
+  const selectedNivelObj = niveles.find(n => n.floor === Number(selectedNivel));
+  const { imageData, loading, error } = useLevelImage(selectedTorre, selectedNivel);
 
   return (
     <div>
@@ -57,11 +81,17 @@ const Mapa = () => {
               labelId="torre-label"
               value={selectedTorre}
               label="Torre"
-              onChange={e => setSelectedTorre(e.target.value)}
+              onChange={e => {
+                setSelectedTorre(e.target.value);
+                setSelectedNivel(''); // Reset nivel when torre changes
+              }}
+              disabled={userLevelsLoading || !userLevels}
             >
               <MenuItem value="">Todas</MenuItem>
               {torres.map(torre => (
-                <MenuItem key={torre} value={torre}>{torre}</MenuItem>
+                <MenuItem key={torre.parking_id} value={torre.parking_id}>
+                  {torre.parking_alias} ({torre.complex})
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -72,10 +102,13 @@ const Mapa = () => {
               value={selectedNivel}
               label="Nivel"
               onChange={e => setSelectedNivel(e.target.value)}
+              disabled={!selectedTorre || niveles.length === 0}
             >
               <MenuItem value="">Todos</MenuItem>
               {niveles.map(nivel => (
-                <MenuItem key={nivel} value={nivel}>{nivel}</MenuItem>
+                <MenuItem key={nivel.floor} value={nivel.floor}>
+                  {nivel.floor_alias} (Piso {nivel.floor})
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -403,11 +436,16 @@ const Mapa = () => {
         <div className="map-visualization">
           <div className="map-content">
             <div className="map-placeholder">
-              
+              {error && (
+                <div style={{ color: 'red', marginBottom: 12 }}>
+                  Error al cargar la imagen del nivel: {error}
+                </div>
+                
+              )}
               <KonvaRenderer
                 stage={mapStageData}
                 objects={mapObjectsData}
-                backgroundUrl={parkingImage}
+                backgroundUrl={imageData?.url} // Use fetched image if available, fallback to defaultl || parkingImage} // Use fetched image if available, fallback to default
                 containerWidth={mapStageData.width}
                 containerHeight={mapStageData.height}
                 period={period}
@@ -417,6 +455,8 @@ const Mapa = () => {
             
           </div>
         </div>
+
+        
       </div>
     </div>
   );

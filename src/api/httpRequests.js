@@ -158,3 +158,30 @@ export async function fetchAnalysisData(userId, timeSetting, dateParams = {}, lo
     throw new Error(`Failed to fetch analysis data: ${error.message}`);
   }
 }
+
+export async function fetchLevelImage(parking_id, floor) {
+  const params = new URLSearchParams();
+  if (parking_id) params.append('parking_id', parking_id);
+  if (floor) params.append('floor', floor);
+
+  const url = `https://mapbuilder-bindings.azurewebsites.net/api/get_blob_image?${params}`;
+  console.log(`[API CALL] fetchLevelImage: ${url}`);
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+    console.log('Blob size:', blob.size);
+    const imageUrl = URL.createObjectURL(blob);
+
+    return { url: imageUrl, blob }; // Return an object with the image URL
+
+  } catch (error) {
+    console.error('Error in fetchLevelImage:', error);
+    throw new Error(`Failed to fetch level image: ${error.message}`);
+  }
+}
