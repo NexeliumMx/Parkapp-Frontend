@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
+import { Nightlight } from "@mui/icons-material"; // MUI moon icon
 import "./sidebar.css";
 
 const Sidebar = ({ collapsed }) => {
@@ -43,6 +44,15 @@ const Sidebar = ({ collapsed }) => {
             >
               <span className="sidebar-icon">📋</span>
               {!collapsed && <span className="sidebar-label">Tabla</span>}
+            </Link>
+          </li>
+          <li>
+            <Link 
+              to="/pernocte" 
+              className={`sidebar-link${location.pathname === "/pernocte" ? " active" : ""}`}
+            >
+              <span className="sidebar-icon"><Nightlight fontSize="small" /></span>
+              {!collapsed && <span className="sidebar-label">Pernocte</span>}
             </Link>
           </li>
         </ul>

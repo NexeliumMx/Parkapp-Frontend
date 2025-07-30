@@ -185,3 +185,69 @@ export async function fetchLevelImage(parking_id, floor) {
     throw new Error(`Failed to fetch level image: ${error.message}`);
   }
 }
+export async function fetchStatsByDateBucketFlexible(params) {
+  const query = new URLSearchParams();
+
+  // Required
+  query.append('parking_id', params.parking_id);
+
+  if (params.year) {
+    if (params.year.range) {
+      if (params.year.from) query.append('start_year', params.year.from);
+      if (params.year.to) query.append('end_year', params.year.to);
+      query.append('year_range', 'true');
+    } else if (params.year.exact) {
+      query.append('year', params.year.exact);
+      query.append('year_range', 'false');
+    }
+  }
+
+  if (params.month) {
+    if (params.month.range) {
+      if (params.month.from) query.append('start_month', params.month.from);
+      if (params.month.to) query.append('end_month', params.month.to);
+      query.append('month_range', 'true');
+    } else if (params.month.exact) {
+      query.append('month', params.month.exact);
+      query.append('month_range', 'false');
+    }
+  }
+  if (params.day) {
+    if (params.day.range) {
+      if (params.day.from) query.append('start_day', params.day.from);
+      if (params.day.to) query.append('end_day', params.day.to);
+      query.append('day_range', 'true');
+    } else if (params.day.exact) {
+      query.append('day', params.day.exact);
+      query.append('day_range', 'false');
+    }
+  }
+
+  if (params.hour) {
+    if (params.hour.range) {
+      if (params.hour.from) query.append('start_hour', params.hour.from);
+      if (params.hour.to) query.append('end_hour', params.hour.to);
+      query.append('hour_range', 'true');
+    } else if (params.hour.exact) {
+      query.append('hour', params.hour.exact);
+      query.append('hour_range', 'false');
+    }
+  }
+
+  const url = `http://localhost:7071/api/getStatsByDateBucket?${query.toString()}`;
+  console.log(`[API CALL] fetchStatsByDateBucketFlexible: ${url}`);
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error in fetchStatsByDateBucketFlexible:', error);
+    throw new Error(`Failed to fetch stats by date bucket: ${error.message}`);
+  }
+}
