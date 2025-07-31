@@ -6,6 +6,7 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import { useStatsByDateBucketFlexible } from '../api/hooks/useStatsByDateBucketFlexible';
 import { useFetchLevelsbyUser } from '../api/hooks/useLevelbyUser';
+import Divider from '@mui/material/Divider';
 
 const user_id = 'fb713fca-4cbc-44b1-8a25-c6685c3efd31';
 
@@ -106,157 +107,197 @@ const Tablas = () => {
       <h1 className="tablas-title">Tablas de sensores</h1>
       <h4 className="tablas-subtitle">Residencial Lomas de Bezares</h4>
       <div className="tables-container">
-        <div className="controls-container">
+        {/* Make controls-container a column layout */}
+        <div className="controls-container" style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
           {/* Filter Box */}
           <div className="filter-box">
-            <h2>Filtros</h2>
-            <div className="filter-content">
-              <div className="filter-group">
-                <FormControl fullWidth>
-                  <InputLabel id="tower-label">Torre</InputLabel>
-                  <Select
-                    labelId="tower-label"
-                    id="tower"
-                    value={selectedTower}
-                    label="Torre"
-                    onChange={(e) => {
-                      setSelectedTower(e.target.value);
-                      setSelectedLevel('');
-                    }}
-                  >
-                    <MenuItem value="">Todas las torres</MenuItem>
-                    {towerOptions.map(tower => (
-                      <MenuItem key={tower.parking_id} value={tower.parking_id}>
-                        {tower.parking_alias}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+            <div className="filter-content" style={{ display: 'flex', gap: 32, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              {/* Location Filters Group */}
+              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 180 }}>
+                <div style={{ fontWeight: 500, fontSize: 18, marginBottom: 8, marginLeft: 2 }}>Filtros</div>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  {/* Torre */}
+                  <div className="filter-group" style={{ minWidth: 180 }}>
+                    <FormControl fullWidth>
+                      <InputLabel id="tower-label">Torre</InputLabel>
+                      <Select
+                        labelId="tower-label"
+                        id="tower"
+                        value={selectedTower}
+                        label="Torre"
+                        onChange={(e) => {
+                          setSelectedTower(e.target.value);
+                          setSelectedLevel('');
+                        }}
+                      >
+                        <MenuItem value="">Todas las torres</MenuItem>
+                        {towerOptions.map(tower => (
+                          <MenuItem key={tower.parking_id} value={tower.parking_id}>
+                            {tower.parking_alias}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </div>
+                  {/* Nivel */}
+                  <div className="filter-group" style={{ minWidth: 180 }}>
+                    <FormControl fullWidth>
+                      <InputLabel id="level-label">Nivel</InputLabel>
+                      <Select
+                        labelId="level-label"
+                        id="level"
+                        value={selectedLevel}
+                        label="Nivel"
+                        onChange={(e) => {
+                          setSelectedLevel(e.target.value);
+                        }}
+                      >
+                        <MenuItem value="">Todos los niveles</MenuItem>
+                        {levelOptions.map(level => (
+                          <MenuItem key={level.floor} value={level.floor_alias}>
+                            {level.floor_alias}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </div>
+                </div>
               </div>
-              <div className="filter-group">
-                <FormControl fullWidth>
-                  <InputLabel id="level-label">Nivel</InputLabel>
-                  <Select
-                    labelId="level-label"
-                    id="level"
-                    value={selectedLevel}
-                    label="Nivel"
-                    onChange={(e) => {
-                      setSelectedLevel(e.target.value);
-                    }}
-                  >
-                    <MenuItem value="">Todos los niveles</MenuItem>
-                    {levelOptions.map(level => (
-                      <MenuItem key={level.floor} value={level.floor_alias}>
-                        {level.floor_alias}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+              {/* Order Selectors Group */}
+              <div style={{ display: 'flex', flexDirection: 'column', minWidth: 340 }}>
+                <div style={{ fontWeight: 500, fontSize: 18, marginBottom: 8, marginLeft: 2 }}>Orden de la tabla</div>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  {/* Ordenar por */}
+                  <div className="filter-group" style={{ minWidth: 180 }}>
+                    <FormControl fullWidth>
+                      <InputLabel id="sortBy-label">Ordenar por</InputLabel>
+                      <Select
+                        labelId="sortBy-label"
+                        id="sortBy"
+                        value={sortBy}
+                        label="Ordenar por"
+                        onChange={(e) => setSortBy(e.target.value)}
+                      >
+                        <MenuItem value="">Sin orden</MenuItem>
+                        <MenuItem value="normalized_rotation">Rotación</MenuItem>
+                        <MenuItem value="occupation_percentage">Ocupación</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </div>
+                  {/* Orden */}
+                  <div className="filter-group" style={{ minWidth: 140 }}>
+                    <FormControl fullWidth>
+                      <InputLabel id="sortOrder-label">Orden</InputLabel>
+                      <Select
+                        labelId="sortOrder-label"
+                        id="sortOrder"
+                        value={sortOrder}
+                        label="Orden"
+                        onChange={(e) => setSortOrder(e.target.value)}
+                        disabled={!sortBy}
+                      >
+                        <MenuItem value="asc">Ascendente</MenuItem>
+                        <MenuItem value="desc">Descendente</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </div>
+                </div>
               </div>
             </div>
+            <div style={{ width: '100%', margin: '16px 0' }}>
+
+              <Divider sx={{ my: 2, borderWidth:1.5 }} />
+            
+              </div>
+              
+              
             {/* Date Filters UI */}
-            <div className="filtros-rango-multilinea">
-              {/* Año */}
-              <div className="filtro-ano-rango">
-                <div className="filtro-ano-selectores">
-                  <div className="filtro-ano-selectores-row filtro-centrado">
-                    <div className="filtro-titulo">Año</div>
-                    <div className="filtro-dropdown-row">
-                      {!rangeEnabled ? (
-                        <FormControl fullWidth size="small">
-                          <InputLabel id="year-label">Año</InputLabel>
-                          <Select
-                            labelId="year-label"
-                            value={year}
-                            label="Año"
-                            onChange={e => setYear(e.target.value)}
-                          >
-                            <MenuItem value="">Todos</MenuItem>
-                            <MenuItem value="2024">2024</MenuItem>
-                            <MenuItem value="2025">2025</MenuItem>
-                          </Select>
-                        </FormControl>
-                      ) : (
-                        <>
-                          <FormControl size="small" style={{ minWidth: 90, marginRight: 8 }}>
-                            <InputLabel id="year-from-label">De</InputLabel>
+            <div className="filtros-rango-multilinea" style={{ display: 'flex', flexDirection: 'column' }}>
+              {/* Subtitle for filtros rango multilinea */}
+              <div style={{ fontWeight: 500, fontSize: 18, marginBottom: 8, marginLeft: 2 }}>Selecciona el tiempo de análisis</div>
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                {/* Año */}
+                <div className="filtro-ano-rango">
+                  <div className="filtro-ano-selectores">
+                    <div className="filtro-ano-selectores-row filtro-centrado">
+                      <div className="filtro-titulo">Año</div>
+                      <div className="filtro-dropdown-row">
+                        {!rangeEnabled ? (
+                          <FormControl fullWidth size="small">
+                            <InputLabel id="year-label">Año</InputLabel>
                             <Select
-                              labelId="year-from-label"
-                              value={yearFrom}
-                              label="De"
-                              onChange={e => setYearFrom(e.target.value)}
+                              labelId="year-label"
+                              value={year}
+                              label="Año"
+                              onChange={e => setYear(e.target.value)}
                             >
-                              <MenuItem value="">Año</MenuItem>
+                              <MenuItem value="">Todos</MenuItem>
                               <MenuItem value="2024">2024</MenuItem>
                               <MenuItem value="2025">2025</MenuItem>
                             </Select>
                           </FormControl>
-                          <span style={{ margin: '0 8px' }}>al</span>
-                          <FormControl size="small" style={{ minWidth: 90 }}>
-                            <InputLabel id="year-to-label">A</InputLabel>
-                            <Select
-                              labelId="year-to-label"
-                              value={yearTo}
-                              label="A"
-                              onChange={e => setYearTo(e.target.value)}
-                            >
-                              <MenuItem value="">Año</MenuItem>
-                              <MenuItem value="2024">2024</MenuItem>
-                              <MenuItem value="2025">2025</MenuItem>
-                            </Select>
-                          </FormControl>
-                        </>
-                      )}
+                        ) : (
+                          <>
+                            <FormControl size="small" style={{ minWidth: 90, marginRight: 8 }}>
+                              <InputLabel id="year-from-label">De</InputLabel>
+                              <Select
+                                labelId="year-from-label"
+                                value={yearFrom}
+                                label="De"
+                                onChange={e => setYearFrom(e.target.value)}
+                              >
+                                <MenuItem value="">Año</MenuItem>
+                                <MenuItem value="2024">2024</MenuItem>
+                                <MenuItem value="2025">2025</MenuItem>
+                              </Select>
+                            </FormControl>
+                            <span style={{ margin: '0 8px' }}>al</span>
+                            <FormControl size="small" style={{ minWidth: 90 }}>
+                              <InputLabel id="year-to-label">A</InputLabel>
+                              <Select
+                                labelId="year-to-label"
+                                value={yearTo}
+                                label="A"
+                                onChange={e => setYearTo(e.target.value)}
+                              >
+                                <MenuItem value="">Año</MenuItem>
+                                <MenuItem value="2024">2024</MenuItem>
+                                <MenuItem value="2025">2025</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="filtro-ano-checkbox filtro-centrado">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={rangeEnabled}
+                          onChange={e => setRangeEnabled(e.target.checked)}
+                          style={{ marginRight: 6 }}
+                        />
+                        Rango
+                      </label>
                     </div>
                   </div>
-                  <div className="filtro-ano-checkbox filtro-centrado">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={rangeEnabled}
-                        onChange={e => setRangeEnabled(e.target.checked)}
-                        style={{ marginRight: 6 }}
-                      />
-                      Rango
-                    </label>
-                  </div>
                 </div>
-              </div>
-              {/* Mes */}
-              <div className="filtro-ano-rango">
-                <div className="filtro-ano-selectores">
-                  <div className="filtro-ano-selectores-row filtro-centrado">
-                    <div className="filtro-titulo">Mes</div>
-                    <div className="filtro-dropdown-row">
-                      {!monthRangeEnabled ? (
-                        <FormControl fullWidth size="small">
-                          <InputLabel id="month-label">Mes</InputLabel>
-                          <Select
-                            labelId="month-label"
-                            value={month}
-                            label="Mes"
-                            onChange={e => setMonth(e.target.value)}
-                          >
-                            <MenuItem value="">Todos</MenuItem>
-                            {[...Array(12)].map((_, i) => (
-                              <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                                {new Date(0, i).toLocaleString('es', { month: 'long' })}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      ) : (
-                        <>
-                          <FormControl size="small" style={{ minWidth: 110, marginRight: 8 }}>
-                            <InputLabel id="month-from-label">De</InputLabel>
+                {/* Mes */}
+                <div className="filtro-ano-rango">
+                  <div className="filtro-ano-selectores">
+                    <div className="filtro-ano-selectores-row filtro-centrado">
+                      <div className="filtro-titulo">Mes</div>
+                      <div className="filtro-dropdown-row">
+                        {!monthRangeEnabled ? (
+                          <FormControl fullWidth size="small" style={{ minWidth: 90 }}>
+                            <InputLabel id="month-label">Mes</InputLabel>
                             <Select
-                              labelId="month-from-label"
-                              value={monthFrom}
-                              label="De"
-                              onChange={e => setMonthFrom(e.target.value)}
+                              labelId="month-label"
+                              value={month}
+                              label="Mes"
+                              onChange={e => setMonth(e.target.value)}
                             >
-                              <MenuItem value="">Mes</MenuItem>
+                              <MenuItem value="">Todos</MenuItem>
                               {[...Array(12)].map((_, i) => (
                                 <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
                                   {new Date(0, i).toLocaleString('es', { month: 'long' })}
@@ -264,74 +305,74 @@ const Tablas = () => {
                               ))}
                             </Select>
                           </FormControl>
-                          <span style={{ margin: '0 8px' }}>a</span>
-                          <FormControl size="small" style={{ minWidth: 110 }}>
-                            <InputLabel id="month-to-label">A</InputLabel>
-                            <Select
-                              labelId="month-to-label"
-                              value={monthTo}
-                              label="A"
-                              onChange={e => setMonthTo(e.target.value)}
-                            >
-                              <MenuItem value="">Mes</MenuItem>
-                              {[...Array(12)].map((_, i) => (
-                                <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                                  {new Date(0, i).toLocaleString('es', { month: 'long' })}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </>
-                      )}
+                        ) : (
+                          <>
+                            <FormControl size="small" style={{ minWidth: 90, marginRight: 8 }}>
+                              <InputLabel id="month-from-label">De</InputLabel>
+                              <Select
+                                labelId="month-from-label"
+                                value={monthFrom}
+                                label="De"
+                                onChange={e => setMonthFrom(e.target.value)}
+                              >
+                                <MenuItem value="">Mes</MenuItem>
+                                {[...Array(12)].map((_, i) => (
+                                  <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                                    {new Date(0, i).toLocaleString('es', { month: 'long' })}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <span style={{ margin: '0 8px' }}>a</span>
+                            <FormControl size="small" style={{ minWidth: 90 }}>
+                              <InputLabel id="month-to-label">A</InputLabel>
+                              <Select
+                                labelId="month-to-label"
+                                value={monthTo}
+                                label="A"
+                                onChange={e => setMonthTo(e.target.value)}
+                              >
+                                <MenuItem value="">Mes</MenuItem>
+                                {[...Array(12)].map((_, i) => (
+                                  <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                                    {new Date(0, i).toLocaleString('es', { month: 'long' })}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="filtro-ano-checkbox filtro-centrado">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={monthRangeEnabled}
+                          onChange={e => setMonthRangeEnabled(e.target.checked)}
+                          style={{ marginRight: 6 }}
+                        />
+                        Rango
+                      </label>
                     </div>
                   </div>
-                  <div className="filtro-ano-checkbox filtro-centrado">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={monthRangeEnabled}
-                        onChange={e => setMonthRangeEnabled(e.target.checked)}
-                        style={{ marginRight: 6 }}
-                      />
-                      Rango
-                    </label>
-                  </div>
                 </div>
-              </div>
-              {/* Día */}
-              <div className="filtro-ano-rango">
-                <div className="filtro-ano-selectores">
-                  <div className="filtro-ano-selectores-row filtro-centrado">
-                    <div className="filtro-titulo">Día</div>
-                    <div className="filtro-dropdown-row">
-                      {!dayRangeEnabled ? (
-                        <FormControl fullWidth size="small">
-                          <InputLabel id="day-label">Día</InputLabel>
-                          <Select
-                            labelId="day-label"
-                            value={day}
-                            label="Día"
-                            onChange={e => setDay(e.target.value)}
-                          >
-                            <MenuItem value="">Todos</MenuItem>
-                            {[...Array(31)].map((_, i) => (
-                              <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                                {i + 1}
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      ) : (
-                        <>
-                          <FormControl size="small" style={{ minWidth: 90, marginRight: 8 }}>
-                            <InputLabel id="day-from-label">De</InputLabel>
+                {/* Día */}
+                <div className="filtro-ano-rango">
+                  <div className="filtro-ano-selectores">
+                    <div className="filtro-ano-selectores-row filtro-centrado">
+                      <div className="filtro-titulo">Día</div>
+                      <div className="filtro-dropdown-row">
+                        {!dayRangeEnabled ? (
+                          <FormControl fullWidth size="small">
+                            <InputLabel id="day-label">Día</InputLabel>
                             <Select
-                              labelId="day-from-label"
-                              value={dayFrom}
-                              label="De"
-                              onChange={e => setDayFrom(e.target.value)}
+                              labelId="day-label"
+                              value={day}
+                              label="Día"
+                              onChange={e => setDay(e.target.value)}
                             >
-                              <MenuItem value="">Día</MenuItem>
+                              <MenuItem value="">Todos</MenuItem>
                               {[...Array(31)].map((_, i) => (
                                 <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
                                   {i + 1}
@@ -339,74 +380,74 @@ const Tablas = () => {
                               ))}
                             </Select>
                           </FormControl>
-                          <span style={{ margin: '0 8px' }}>al</span>
-                          <FormControl size="small" style={{ minWidth: 90 }}>
-                            <InputLabel id="day-to-label">A</InputLabel>
-                            <Select
-                              labelId="day-to-label"
-                              value={dayTo}
-                              label="A"
-                              onChange={e => setDayTo(e.target.value)}
-                            >
-                              <MenuItem value="">Día</MenuItem>
-                              {[...Array(31)].map((_, i) => (
-                                <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                                  {i + 1}
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </>
-                      )}
+                        ) : (
+                          <>
+                            <FormControl size="small" style={{ minWidth: 90, marginRight: 8 }}>
+                              <InputLabel id="day-from-label">De</InputLabel>
+                              <Select
+                                labelId="day-from-label"
+                                value={dayFrom}
+                                label="De"
+                                onChange={e => setDayFrom(e.target.value)}
+                              >
+                                <MenuItem value="">Día</MenuItem>
+                                {[...Array(31)].map((_, i) => (
+                                  <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                                    {i + 1}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <span style={{ margin: '0 8px' }}>al</span>
+                            <FormControl size="small" style={{ minWidth: 90 }}>
+                              <InputLabel id="day-to-label">A</InputLabel>
+                              <Select
+                                labelId="day-to-label"
+                                value={dayTo}
+                                label="A"
+                                onChange={e => setDayTo(e.target.value)}
+                              >
+                                <MenuItem value="">Día</MenuItem>
+                                {[...Array(31)].map((_, i) => (
+                                  <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
+                                    {i + 1}
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="filtro-ano-checkbox filtro-centrado">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={dayRangeEnabled}
+                          onChange={e => setDayRangeEnabled(e.target.checked)}
+                          style={{ marginRight: 6 }}
+                        />
+                        Rango
+                      </label>
                     </div>
                   </div>
-                  <div className="filtro-ano-checkbox filtro-centrado">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={dayRangeEnabled}
-                        onChange={e => setDayRangeEnabled(e.target.checked)}
-                        style={{ marginRight: 6 }}
-                      />
-                      Rango
-                    </label>
-                  </div>
                 </div>
-              </div>
-              {/* Hora */}
-              <div className="filtro-ano-rango">
-                <div className="filtro-ano-selectores">
-                  <div className="filtro-ano-selectores-row filtro-centrado">
-                    <div className="filtro-titulo">Hora</div>
-                    <div className="filtro-dropdown-row">
-                      {!hourRangeEnabled ? (
-                        <FormControl fullWidth size="small">
-                          <InputLabel id="hour-label">Hora</InputLabel>
-                          <Select
-                            labelId="hour-label"
-                            value={hour}
-                            label="Hora"
-                            onChange={e => setHour(e.target.value)}
-                          >
-                            <MenuItem value="">Todas</MenuItem>
-                            {[...Array(24)].map((_, i) => (
-                              <MenuItem key={i} value={String(i).padStart(2, '0')}>
-                                {i}:00
-                              </MenuItem>
-                            ))}
-                          </Select>
-                        </FormControl>
-                      ) : (
-                        <>
-                          <FormControl size="small" style={{ minWidth: 90, marginRight: 8 }}>
-                            <InputLabel id="hour-from-label">De</InputLabel>
+               {/* Hora */}
+                <div className="filtro-ano-rango">
+                  <div className="filtro-ano-selectores">
+                    <div className="filtro-ano-selectores-row filtro-centrado">
+                      <div className="filtro-titulo">Hora</div>
+                      <div className="filtro-dropdown-row">
+                        {!hourRangeEnabled ? (
+                          <FormControl fullWidth size="small">
+                            <InputLabel id="hour-label">Hora</InputLabel>
                             <Select
-                              labelId="hour-from-label"
-                              value={hourFrom}
-                              label="De"
-                              onChange={e => setHourFrom(e.target.value)}
+                              labelId="hour-label"
+                              value={hour}
+                              label="Hora"
+                              onChange={e => setHour(e.target.value)}
                             >
-                              <MenuItem value="">Hora</MenuItem>
+                              <MenuItem value="">Todas</MenuItem>
                               {[...Array(24)].map((_, i) => (
                                 <MenuItem key={i} value={String(i).padStart(2, '0')}>
                                   {i}:00
@@ -414,109 +455,96 @@ const Tablas = () => {
                               ))}
                             </Select>
                           </FormControl>
-                          <span style={{ margin: '0 8px' }}>a</span>
-                          <FormControl size="small" style={{ minWidth: 90 }}>
-                            <InputLabel id="hour-to-label">A</InputLabel>
-                            <Select
-                              labelId="hour-to-label"
-                              value={hourTo}
-                              label="A"
-                              onChange={e => setHourTo(e.target.value)}
-                            >
-                              <MenuItem value="">Hora</MenuItem>
-                              {[...Array(24)].map((_, i) => (
-                                <MenuItem key={i} value={String(i).padStart(2, '0')}>
-                                  {i}:00
-                                </MenuItem>
-                              ))}
-                            </Select>
-                          </FormControl>
-                        </>
-                      )}
+                        ) : (
+                          <>
+                            <FormControl size="small" style={{ minWidth: 90, marginRight: 8 }}>
+                              <InputLabel id="hour-from-label">De</InputLabel>
+                              <Select
+                                labelId="hour-from-label"
+                                value={hourFrom}
+                                label="De"
+                                onChange={e => setHourFrom(e.target.value)}
+                              >
+                                <MenuItem value="">Hora</MenuItem>
+                                {[...Array(24)].map((_, i) => (
+                                  <MenuItem key={i} value={String(i).padStart(2, '0')}>
+                                    {i}:00
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                            <span style={{ margin: '0 8px' }}>a</span>
+                            <FormControl size="small" style={{ minWidth: 90 }}>
+                              <InputLabel id="hour-to-label">A</InputLabel>
+                              <Select
+                                labelId="hour-to-label"
+                                value={hourTo}
+                                label="A"
+                                onChange={e => setHourTo(e.target.value)}
+                              >
+                                <MenuItem value="">Hora</MenuItem>
+                                {[...Array(24)].map((_, i) => (
+                                  <MenuItem key={i} value={String(i).padStart(2, '0')}>
+                                    {i}:00
+                                  </MenuItem>
+                                ))}
+                              </Select>
+                            </FormControl>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <div className="filtro-ano-checkbox filtro-centrado">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={hourRangeEnabled}
-                        onChange={e => setHourRangeEnabled(e.target.checked)}
-                        style={{ marginRight: 6 }}
-                      />
-                      Rango
-                    </label>
+                    <div className="filtro-ano-checkbox filtro-centrado">
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={hourRangeEnabled}
+                          onChange={e => setHourRangeEnabled(e.target.checked)}
+                          style={{ marginRight: 6 }}
+                        />
+                        Rango
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-          {/* Sort Box */}
-          <div className="sort-box">
-            <h2>Ordenar</h2>
-            <div className="sort-content">
-              <div className="sort-group">
-                <label htmlFor="sortBy">Ordenar por</label>
-                <select
-                  id="sortBy"
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                >
-                  <option value="">Sin orden</option>
-                  <option value="normalized_rotation">Rotación</option>
-                  <option value="occupation_percentage">Ocupación</option>
-                </select>
-              </div>
-              <div className="sort-group">
-                <label htmlFor="sortOrder">Orden</label>
-                <select
-                  id="sortOrder"
-                  value={sortOrder}
-                  onChange={(e) => setSortOrder(e.target.value)}
-                  disabled={!sortBy}
-                >
-                  <option value="asc">Ascendente</option>
-                  <option value="desc">Descendente</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-        {/* Content Box */}
-        <div className="content-box">
-          {loading || parkingLoading ? (
-            <div>Cargando datos...</div>
-          ) : error || parkingError ? (
-            hasDateFilter ? (
-              <div>Error: {(error && error.message) || (parkingError && parkingError.message)}</div>
+          {/* Content Box - table will be directly below filters */}
+          <div className="content-box">
+            {loading || parkingLoading ? (
+              <div>Cargando datos...</div>
+            ) : error || parkingError ? (
+              hasDateFilter ? (
+                <div>Error: {(error && error.message) || (parkingError && parkingError.message)}</div>
+              ) : (
+                <div>Seleccione al menos un filtro de fecha para mostrar datos.</div>
+              )
             ) : (
-              <div>Seleccione al menos un filtro de fecha para mostrar datos.</div>
-            )
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Sensor</th>
-                  <th>Torre</th>
-                  <th>Nivel</th>
-                  <th>Rotación</th>
-                  <th>Ocupación</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredData.map((item) => (
-                  <tr key={item.sensor_id}>
-                    <td>{item.sensor_id}</td>
-                    <td>{item.sensor_alias}</td>
-                    <td>{item.parking_alias}</td>
-                    <td>{item.floor_alias}</td>
-                    <td>{item.normalized_rotation}</td>
-                    <td>{item.occupation_percentage}%</td>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Sensor</th>
+                    <th>Torre</th>
+                    <th>Nivel</th>
+                    <th>Rotación</th>
+                    <th>Ocupación</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                </thead>
+                <tbody>
+                  {filteredData.map((item) => (
+                    <tr key={item.sensor_id}>
+                      <td>{item.sensor_alias}</td>
+                      <td>{item.parking_alias}</td>
+                      <td>{item.floor_alias}</td>
+                      <td>{item.normalized_rotation}</td>
+                      <td>{item.occupation_percentage}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
       </div>
     </div>
