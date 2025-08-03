@@ -8,6 +8,7 @@ import Tablas from "./components/tablas";
 import Graficas from "./components/graficas";
 import Mapa from "./components/mapa";
 import Pernocte from "./components/pernocte";
+import Info from "./components/info";
 
 function App() {
   const [collapsed, setCollapsed] = useState(false);
@@ -27,6 +28,7 @@ function App() {
               <Route path="/graficas" element={<Graficas sidebarCollapsed={collapsed} />} />
               <Route path="/tablas" element={<Tablas />} />
               <Route path="/pernocte" element={<Pernocte />} />
+              <Route path="/info" element={<Info />} />
             </Routes>
           </div>
         </div>

@@ -1,48 +1,56 @@
-import React, { useState } from 'react';
-import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Card, CardContent, FormControl, InputLabel, Select, MenuItem, Button, Typography } from '@mui/material';
-
-const rows = [
-  {
-    complejo: 'Complex 1',
-    estacionamiento: 'Parking 1',
-    nivel: 'Nivel 2',
-    lugar: 'A-15',
-    tiempoLlegada: '2025-07-29 08:15',
-    antiguedad: '3 horas'
-  },
-  {
-    complejo: 'Complex 2',
-    estacionamiento: 'Parking 2',
-    nivel: 'Nivel 1',
-    lugar: 'B-03',
-    tiempoLlegada: '2025-07-29 06:30',
-    antiguedad: '5 horas'
-  }
-];
-
-// Get unique values for filters
-const complejos = [...new Set(rows.map(r => r.complejo))];
-const estacionamientos = [...new Set(rows.map(r => r.estacionamiento))];
-const niveles = [...new Set(rows.map(r => r.nivel))];
+import React, { useState, useMemo } from 'react';
+import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Card, CardContent, FormControl, InputLabel, Select, MenuItem, Button, Typography, CircularProgress, Alert } from '@mui/material';
+import './pernocte.css';
+import { usePernocte } from '../api/hooks/usePernocte';
 
 const Pernocte = () => {
   const [fComplejo, setFComplejo] = useState('');
   const [fEstacionamiento, setFEstacionamiento] = useState('');
   const [fNivel, setFNivel] = useState('');
   const [sortOrder, setSortOrder] = useState('desc');
+  const userID = 'fb713fca-4cbc-44b1-8a25-c6685c3efd31';
+  const { data, loading, error } = usePernocte(userID);
+
+  // Use fetched data or fallback to empty array
+  const rows = Array.isArray(data) ? data : [];
+
+  // Get unique values for filters, but filter dependent options
+  const complejos = useMemo(() => [...new Set(rows.map(r => r.complex))], [rows]);
+
+  // Filter estacionamientos based on selected complejo
+  const estacionamientos = useMemo(() => {
+    const filtered = fComplejo
+      ? rows.filter(r => r.complex === fComplejo)
+      : rows;
+    return [...new Set(filtered.map(r => r.parking_alias))];
+  }, [rows, fComplejo]);
+
+  // Filter niveles based on selected complejo and estacionamiento
+  const niveles = useMemo(() => {
+    let filtered = rows;
+    if (fComplejo) {
+      filtered = filtered.filter(r => r.complex === fComplejo);
+    }
+    if (fEstacionamiento) {
+      filtered = filtered.filter(r => r.parking_alias === fEstacionamiento);
+    }
+    return [...new Set(filtered.map(r => r.floor_alias))];
+  }, [rows, fComplejo, fEstacionamiento]);
 
   // Filter and sort logic
-  const filteredRows = rows
-    .filter(r =>
-      (!fComplejo || r.complejo === fComplejo) &&
-      (!fEstacionamiento || r.estacionamiento === fEstacionamiento) &&
-      (!fNivel || r.nivel === fNivel)
-    )
-    .sort((a, b) => {
-      const dateA = new Date(a.tiempoLlegada);
-      const dateB = new Date(b.tiempoLlegada);
-      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-    });
+  const filteredRows = useMemo(() => {
+    return rows
+      .filter(r =>
+        (!fComplejo || r.complex === fComplejo) &&
+        (!fEstacionamiento || r.parking_alias === fEstacionamiento) &&
+        (!fNivel || r.floor_alias === fNivel)
+      )
+      .sort((a, b) => {
+        const dateA = new Date(a.entry_time);
+        const dateB = new Date(b.entry_time);
+        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+      });
+  }, [rows, fComplejo, fEstacionamiento, fNivel, sortOrder]);
 
   return (
     <div>
@@ -60,7 +68,11 @@ const Pernocte = () => {
                 labelId="complejo-label"
                 value={fComplejo}
                 label="Complejo"
-                onChange={e => setFComplejo(e.target.value)}
+                onChange={e => {
+                  setFComplejo(e.target.value);
+                  setFEstacionamiento('');
+                  setFNivel('');
+                }}
               >
                 <MenuItem value="">Todos</MenuItem>
                 {complejos.map(c => (
@@ -74,7 +86,11 @@ const Pernocte = () => {
                 labelId="estacionamiento-label"
                 value={fEstacionamiento}
                 label="Estacionamiento"
-                onChange={e => setFEstacionamiento(e.target.value)}
+                onChange={e => {
+                  setFEstacionamiento(e.target.value);
+                  setFNivel('');
+                }}
+                disabled={estacionamientos.length === 0}
               >
                 <MenuItem value="">Todos</MenuItem>
                 {estacionamientos.map(e => (
@@ -89,6 +105,7 @@ const Pernocte = () => {
                 value={fNivel}
                 label="Nivel"
                 onChange={e => setFNivel(e.target.value)}
+                disabled={niveles.length === 0}
               >
                 <MenuItem value="">Todos</MenuItem>
                 {niveles.map(n => (
@@ -122,6 +139,16 @@ const Pernocte = () => {
           </div>
         </CardContent>
       </Card>
+      {loading && (
+        <div style={{ textAlign: 'center', margin: 32 }}>
+          <CircularProgress />
+        </div>
+      )}
+      {error && (
+        <Alert severity="error" style={{ marginBottom: 16 }}>
+          Error al cargar los datos: {error.message}
+        </Alert>
+      )}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -132,17 +159,23 @@ const Pernocte = () => {
               <TableCell>Lugar</TableCell>
               <TableCell>Tiempo de llegada</TableCell>
               <TableCell>Antigüedad en el lote</TableCell>
+              <TableCell>Hora de cierre al llegar</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {filteredRows.map((row, idx) => (
-              <TableRow key={idx}>
-                <TableCell>{row.complejo}</TableCell>
-                <TableCell>{row.estacionamiento}</TableCell>
-                <TableCell>{row.nivel}</TableCell>
-                <TableCell>{row.lugar}</TableCell>
-                <TableCell>{row.tiempoLlegada}</TableCell>
-                <TableCell>{row.antiguedad}</TableCell>
+              <TableRow key={row.sensor_id || idx}>
+                <TableCell>{row.complex}</TableCell>
+                <TableCell>{row.parking_alias}</TableCell>
+                <TableCell>{row.floor_alias}</TableCell>
+                <TableCell>{row.sensor_alias}</TableCell>
+                <TableCell>{new Date(row.entry_time).toLocaleString()}</TableCell>
+                <TableCell>
+                  {row.duration_parked
+                    ? `${row.duration_parked.days || 0}d ${row.duration_parked.hours || 0}h ${row.duration_parked.minutes || 0}m`
+                    : ''}
+                </TableCell>
+                <TableCell>{row.closing_time_on_arrival}</TableCell>
               </TableRow>
             ))}
           </TableBody>

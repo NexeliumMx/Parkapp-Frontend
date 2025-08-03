@@ -445,9 +445,7 @@ const Mapa = () => {
               <KonvaRenderer
                 stage={mapStageData}
                 objects={mapObjectsData}
-                backgroundUrl={imageData?.url} // Use fetched image if available, fallback to defaultl || parkingImage} // Use fetched image if available, fallback to default
-                containerWidth={mapStageData.width}
-                containerHeight={mapStageData.height}
+                backgroundUrl={imageData?.url} 
                 period={period}
                 sensorData={constSensorData}
               />   

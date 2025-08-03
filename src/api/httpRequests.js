@@ -163,7 +163,7 @@ export async function fetchLevelImage(parking_id, floor) {
   const params = new URLSearchParams();
   if (parking_id) params.append('parking_id', parking_id);
   if (floor) params.append('floor', floor);
-
+  console.log(`[API CALL] fetchLevelImage: ${params}`);
   const url = `https://mapbuilder-bindings.azurewebsites.net/api/get_blob_image?${params}`;
   console.log(`[API CALL] fetchLevelImage: ${url}`);
 
@@ -174,11 +174,10 @@ export async function fetchLevelImage(parking_id, floor) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
-    const blob = await response.blob();
-    console.log('Blob size:', blob.size);
-    const imageUrl = URL.createObjectURL(blob);
-
-    return { url: imageUrl, blob }; // Return an object with the image URL
+   const imageUrl = await response.text();
+    
+    console.log('Image URL:', imageUrl);
+    return { url: imageUrl}; // Return an object with the image URL
 
   } catch (error) {
     console.error('Error in fetchLevelImage:', error);
@@ -249,5 +248,35 @@ export async function fetchStatsByDateBucketFlexible(params) {
   } catch (error) {
     console.error('Error in fetchStatsByDateBucketFlexible:', error);
     throw new Error(`Failed to fetch stats by date bucket: ${error.message}`);
+  }
+}
+
+export async function fetchPernocte(userId) {
+  if (!userId) {
+    throw new Error('Missing required parameter: userId');
+  }
+
+  const params = new URLSearchParams({ user_id: userId });
+  const url = `http://localhost:7071/api/pernocte?${params.toString()}`;
+  console.log(`[API CALL] fetchPernocte: ${url}`);
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      // Try to parse error message from server
+      let errorMsg = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) errorMsg = errorData.error;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error in fetchPernocte:', error);
+    throw new Error(`Failed to fetch pernocte data: ${error.message}`);
   }
 }

@@ -55,6 +55,15 @@ const Sidebar = ({ collapsed }) => {
               {!collapsed && <span className="sidebar-label">Pernocte</span>}
             </Link>
           </li>
+          <li>
+            <Link 
+              to="/info" 
+              className={`sidebar-link${location.pathname === "/info" ? " active" : ""}`}
+            >
+              <span className="sidebar-icon">ℹ️</span>
+              {!collapsed && <span className="sidebar-label">Info</span>}
+            </Link>
+          </li>
         </ul>
       </nav>
     </aside>
