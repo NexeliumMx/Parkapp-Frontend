@@ -1,49 +1,59 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import './info.css';
+import { useFetchParkingInfo } from '../api/hooks/useFetchParkingInfo';
 
-// Example data with users and floors for demonstration
-const estacionamientosData = [
-  {
-    estacionamiento: "Estacionamiento 1",
-    complejo: "Complejo A",
-    usuarios: 25,
-    usuariosDetalle: [
-      { username: "juanperez", asignado: "2023-01-10" },
-      { username: "mariagomez", asignado: "2023-02-15" }
-    ],
-    pisos: 3,
-    pisosDetalle: [
-      { nombre: "Piso 1", sensores: 40 },
-      { nombre: "Piso 2", sensores: 40 },
-      { nombre: "Piso 3", sensores: 40 }
-    ],
-    lugares: 120,
-    instalacion: "2022-01-15",
-    mantenimiento: "2024-06-10"
-  },
-  {
-    estacionamiento: "Estacionamiento 2",
-    complejo: "Complejo B",
-    usuarios: 18,
-    usuariosDetalle: [
-      { username: "carlossanchez", asignado: "2022-11-20" },
-      { username: "lauradiaz", asignado: "2023-03-05" }
-    ],
-    pisos: 2,
-    pisosDetalle: [
-      { nombre: "Piso 1", sensores: 40 },
-      { nombre: "Piso 2", sensores: 40 }
-    ],
-    lugares: 80,
-    instalacion: "2021-09-10",
-    mantenimiento: "2024-05-20"
+// Helper to parse authorized_users string to array of { user_id, username, administrator }
+function parseAuthorizedUsers(str) {
+  if (!str) return [];
+  try {
+    // Remove curly braces and split by '","'
+    return str
+      .replace(/^{|}$/g, '')
+      .split(/","/)
+      .map(s => {
+        // Remove any leading/trailing quotes and parentheses
+        const clean = s.replace(/^"?\(|\)"?$/g, '');
+        const [user_id, username, administrator] = clean.split(',');
+        return { user_id, username, administrator };
+      });
+  } catch {
+    return [];
   }
-  // Puedes agregar más filas según sea necesario
-];
+}
+
+// Group floors and users by parking_id
+function groupParkingData(data) {
+  if (!Array.isArray(data)) return [];
+  const map = new Map();
+  data.forEach(row => {
+    if (!map.has(row.parking_id)) {
+      map.set(row.parking_id, {
+        parking_id: row.parking_id,
+        estacionamiento: row.parking_alias,
+        complejo: row.complex,
+        usuarios: parseAuthorizedUsers(row.authorized_users),
+        pisos: [],
+        lugares: row.parking_sensors,
+        instalacion: row.installation_date,
+        mantenimiento: row.maintenance_date,
+      });
+    }
+    map.get(row.parking_id).pisos.push({
+      nombre: row.floor_alias,
+      sensores: row.floor_sensors,
+    });
+  });
+  return Array.from(map.values());
+}
 
 const Info = () => {
+  const userId = 'fb713fca-4cbc-44b1-8a25-c6685c3efd31'; // Example user ID
+  const { data, loading, error } = useFetchParkingInfo(userId);
+
   // Only one expanded at a time: { type: 'usuarios'|'pisos', idx: number } or null
   const [expanded, setExpanded] = useState(null);
+
+  const estacionamientos = useMemo(() => groupParkingData(data), [data]);
 
   const handleExpand = (type, idx) => {
     if (expanded && expanded.type === type && expanded.idx === idx) {
@@ -57,102 +67,119 @@ const Info = () => {
     <div className="header">
       <h1 className="title">Info</h1>
       <h4 className="subtitle">Residencial Lomas de Bezares</h4>
-      <table className="info-table">
-        <thead>
-          <tr>
-            <th>Estacionamiento</th>
-            <th>Complejo</th>
-            <th>Usuarios autorizados</th>
-            <th>Número de pisos</th>
-            <th>Número de lugares</th>
-            <th>Fecha de instalación</th>
-            <th>Fecha de mantenimiento</th>
-          </tr>
-        </thead>
-        <tbody>
-          {estacionamientosData.map((row, idx) => (
-            <React.Fragment key={idx}>
-              <tr>
-                <td>{row.estacionamiento}</td>
-                <td>{row.complejo}</td>
-                <td
-                  className="expandable-cell"
-                  onClick={() => handleExpand('usuarios', idx)}
-                  tabIndex={0}
-                  aria-expanded={expanded?.type === 'usuarios' && expanded.idx === idx}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {row.usuarios}
-                    <span className="expand-icon">
-                      {expanded?.type === 'usuarios' && expanded.idx === idx ? '▼' : '▶'}
-                    </span>
-                  </span>
-                </td>
-                <td
-                  className="expandable-cell"
-                  onClick={() => handleExpand('pisos', idx)}
-                  tabIndex={0}
-                  aria-expanded={expanded?.type === 'pisos' && expanded.idx === idx}
-                >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    {row.pisos}
-                    <span className="expand-icon">
-                      {expanded?.type === 'pisos' && expanded.idx === idx ? '▼' : '▶'}
-                    </span>
-                  </span>
-                </td>
-                <td>{row.lugares}</td>
-                <td>{row.instalacion}</td>
-                <td>{row.mantenimiento}</td>
-              </tr>
-              {expanded?.type === 'usuarios' && expanded.idx === idx && (
+      {loading && <div>Cargando información...</div>}
+      {error && <div style={{ color: 'red' }}>Error: {error.message}</div>}
+      {!loading && !error && (
+        <table className="info-table">
+          <thead>
+            <tr>
+              <th>Estacionamiento</th>
+              <th>Complejo</th>
+              <th>Usuarios autorizados</th>
+              <th>Número de pisos</th>
+              <th>Número de lugares</th>
+              <th>Fecha de instalación</th>
+              <th>Fecha de mantenimiento</th>
+            </tr>
+          </thead>
+          <tbody>
+            {estacionamientos.map((row, idx) => (
+              <React.Fragment key={row.parking_id}>
                 <tr>
-                  <td colSpan={7}>
-                    <table className="sub-table">
-                      <thead>
-                        <tr>
-                          <th>Usuario</th>
-                          <th>Fecha de asignación</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {row.usuariosDetalle.map((u, i) => (
-                          <tr key={i}>
-                            <td>{u.username}</td>
-                            <td>{u.asignado}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <td>{row.estacionamiento}</td>
+                  <td>{row.complejo}</td>
+                  <td
+                    className="expandable-cell"
+                    onClick={() => handleExpand('usuarios', idx)}
+                    tabIndex={0}
+                    aria-expanded={expanded?.type === 'usuarios' && expanded.idx === idx}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {row.usuarios.length}
+                      <span className="expand-icon">
+                        {expanded?.type === 'usuarios' && expanded.idx === idx ? '▼' : '▶'}
+                      </span>
+                    </span>
                   </td>
-                </tr>
-              )}
-              {expanded?.type === 'pisos' && expanded.idx === idx && (
-                <tr>
-                  <td colSpan={7}>
-                    <table className="sub-table">
-                      <thead>
-                        <tr>
-                          <th>Nombre del piso</th>
-                          <th>Sensores</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {row.pisosDetalle.map((p, i) => (
-                          <tr key={i}>
-                            <td>{p.nombre}</td>
-                            <td>{p.sensores}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <td
+                    className="expandable-cell"
+                    onClick={() => handleExpand('pisos', idx)}
+                    tabIndex={0}
+                    aria-expanded={expanded?.type === 'pisos' && expanded.idx === idx}
+                  >
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {row.pisos.length}
+                      <span className="expand-icon">
+                        {expanded?.type === 'pisos' && expanded.idx === idx ? '▼' : '▶'}
+                      </span>
+                    </span>
                   </td>
+                  <td>{row.lugares}</td>
+                  <td>{row.instalacion ? new Date(row.instalacion).toLocaleDateString() : ''}</td>
+                  <td>{row.mantenimiento ? new Date(row.mantenimiento).toLocaleDateString() : ''}</td>
                 </tr>
-              )}
-            </React.Fragment>
-          ))}
-        </tbody>
-      </table>
+                {expanded?.type === 'usuarios' && expanded.idx === idx && (
+                  <tr>
+                    <td colSpan={7}>
+                      <table className="sub-table">
+                        <thead>
+                          <tr>
+                            <th>Usuario</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {row.usuarios.map((u, i) => (
+                            <tr key={i}>
+                              <td style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                {u.username}
+                                {u.administrator === 't' && (
+                                  <span
+                                    title="Administrador"
+                                    style={{
+                                      color: '#1976d2',
+                                      fontWeight: 'bold',
+                                      marginLeft: 4,
+                                      fontSize: '1.1em',
+                                    }}
+                                  >
+                                    ★
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                )}
+                {expanded?.type === 'pisos' && expanded.idx === idx && (
+                  <tr>
+                    <td colSpan={7}>
+                      <table className="sub-table">
+                        <thead>
+                          <tr>
+                            <th>Nombre del piso</th>
+                            <th>Sensores</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {row.pisos.map((p, i) => (
+                            <tr key={i}>
+                              <td>{p.nombre}</td>
+                              <td>{p.sensores}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 };

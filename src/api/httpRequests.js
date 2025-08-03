@@ -280,3 +280,32 @@ export async function fetchPernocte(userId) {
     throw new Error(`Failed to fetch pernocte data: ${error.message}`);
   }
 }
+export async function fetchParkingInfo(userId) {
+  if (!userId) {
+    throw new Error('Missing required parameter: userId');
+  }
+
+  const params = new URLSearchParams({ user_id: userId });
+  const url = `http://localhost:7071/api/info?${params.toString()}`;
+  console.log(`[API CALL] fetchParkingInfo: ${url}`);
+
+  try {
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      // Try to parse error message from server
+      let errorMsg = `HTTP ${response.status}: ${response.statusText}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.error) errorMsg = errorData.error;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error in fetchParkingInfo:', error);
+    throw new Error(`Failed to fetch parking info: ${error.message}`);
+  }
+}
