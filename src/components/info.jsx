@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import './info.css';
 import { useFetchParkingInfo } from '../api/hooks/useFetchParkingInfo';
+import { useUpdateAlias } from '../api/hooks/useUpdateAlias';
 
 // Helper to parse authorized_users string to array of { user_id, username, administrator }
 function parseAuthorizedUsers(str) {
@@ -46,9 +47,59 @@ function groupParkingData(data) {
   return Array.from(map.values());
 }
 
+// --- EditableCell component ---
+const EditableCell = ({ value, onSave, disabled }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputValue, setInputValue] = useState(value);
+
+  const handleSave = () => {
+    onSave(inputValue);
+    setIsEditing(false);
+  };
+
+  return (
+    <td className={!isEditing ? "editable-td" : ""}>
+      {isEditing ? (
+        <div className="editable-cell-editing">
+          <input
+            type="text"
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            className="editable-cell-input"
+          />
+          <button className="editable-cell-btn" onClick={handleSave}>Guardar</button>
+          <button className="editable-cell-btn" onClick={() => setIsEditing(false)}>Cancelar</button>
+        </div>
+      ) : (
+        <div className="editable-cell-display">
+          <span>{value}</span>
+          {!disabled && (
+            <span
+              className="editable-cell-pencil"
+              title="Editar"
+              onClick={() => setIsEditing(true)}
+              tabIndex={0}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') setIsEditing(true);
+              }}
+              role="button"
+              aria-label="Editar"
+            >
+              ✎
+            </span>
+          )}
+        </div>
+      )}
+    </td>
+  );
+};
+
 const Info = () => {
-  const userId = 'fb713fca-4cbc-44b1-8a25-c6685c3efd31'; // Example user ID
+  const userAdmin='fb713fca-4cbc-44b1-8a25-c6685c3efd31';
+  const userNoAdmin='b4fa4f93-c6b6-440d-bed2-2f8820c49a08';  
+  const userId = userAdmin; // Example user ID
   const { data, loading, error } = useFetchParkingInfo(userId);
+  const { update, loading: updating, error: updateError } = useUpdateAlias();
 
   // Only one expanded at a time: { type: 'usuarios'|'pisos', idx: number } or null
   const [expanded, setExpanded] = useState(null);
@@ -63,12 +114,27 @@ const Info = () => {
     }
   };
 
+  // Helper to update alias
+  const handleAliasUpdate = async ({ field, new_value, parking_id, floor }) => {
+    try {
+      await update({ user_id: userId, field, new_value, parking_id, floor });
+      window.location.reload(); // Or refetch data for a better UX
+    } catch (e) {
+      // Optionally show error
+    }
+  };
+
+  const isRequestingUserAdmin = Array.isArray(data) && data.length > 0
+  ? data[0].is_requesting_user_admin === true
+  : false;
+
   return (
     <div className="header">
       <h1 className="title">Info</h1>
       <h4 className="subtitle">Residencial Lomas de Bezares</h4>
       {loading && <div>Cargando información...</div>}
       {error && <div style={{ color: 'red' }}>Error: {error.message}</div>}
+      {updateError && <div style={{ color: 'red' }}>Error al actualizar: {updateError.message}</div>}
       {!loading && !error && (
         <table className="info-table">
           <thead>
@@ -86,8 +152,32 @@ const Info = () => {
             {estacionamientos.map((row, idx) => (
               <React.Fragment key={row.parking_id}>
                 <tr>
-                  <td>{row.estacionamiento}</td>
-                  <td>{row.complejo}</td>
+                  <td>
+                    <EditableCell
+                      value={row.estacionamiento}
+                      onSave={newVal =>
+                        handleAliasUpdate({
+                          field: 'parking_alias',
+                          new_value: newVal,
+                          parking_id: row.parking_id,
+                        })
+                      }
+                        disabled={!isRequestingUserAdmin}
+                    />
+                  </td>
+                  <td>
+                    <EditableCell
+                      value={row.complejo}
+                      onSave={newVal =>
+                        handleAliasUpdate({
+                          field: 'complex',
+                          new_value: newVal,
+                          parking_id: row.parking_id,
+                        })
+                      }
+                      disabled={!isRequestingUserAdmin}
+                    />
+                  </td>
                   <td
                     className="expandable-cell"
                     onClick={() => handleExpand('usuarios', idx)}
@@ -130,20 +220,10 @@ const Info = () => {
                         <tbody>
                           {row.usuarios.map((u, i) => (
                             <tr key={i}>
-                              <td style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                {u.username}
+                              <td className="user-admin-cell">
+                                <span className="user-admin-username">{u.username}</span>
                                 {u.administrator === 't' && (
-                                  <span
-                                    title="Administrador"
-                                    style={{
-                                      color: '#1976d2',
-                                      fontWeight: 'bold',
-                                      marginLeft: 4,
-                                      fontSize: '1.1em',
-                                    }}
-                                  >
-                                    ★
-                                  </span>
+                                  <span className="user-admin-admin" title="Administrador">admin</span>
                                 )}
                               </td>
                             </tr>
@@ -166,7 +246,20 @@ const Info = () => {
                         <tbody>
                           {row.pisos.map((p, i) => (
                             <tr key={i}>
-                              <td>{p.nombre}</td>
+                              <td>
+                                <EditableCell
+                                  value={p.nombre}
+                                  onSave={newVal =>
+                                    handleAliasUpdate({
+                                      field: 'floor_alias',
+                                      new_value: newVal,
+                                      parking_id: row.parking_id,
+                                      floor: i + 1 // Adjust if your floor index is different
+                                    })
+                                  }
+                                  disabled={!isRequestingUserAdmin}
+                                />
+                              </td>
                               <td>{p.sensores}</td>
                             </tr>
                           ))}

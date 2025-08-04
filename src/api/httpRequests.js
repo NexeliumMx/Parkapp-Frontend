@@ -309,3 +309,36 @@ export async function fetchParkingInfo(userId) {
     throw new Error(`Failed to fetch parking info: ${error.message}`);
   }
 }
+export async function updateAlias({ user_id, field, new_value, parking_id, floor }) {
+  if (!user_id || !field || !new_value || !parking_id ||
+    (field === 'floor_alias' && (floor === undefined || floor === null))) {
+    throw new Error('Missing required parameters.');
+  }
+
+  if (!['parking_alias', 'complex', 'floor_alias'].includes(field)) {
+    throw new Error('Invalid field to update.');
+  }
+
+  const url = `http://localhost:7071/api/updateAlias`;
+  const body = { user_id, field, new_value, parking_id };
+  if (field === 'floor_alias') body.floor = floor;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to update alias');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in updateAlias:', error);
+    throw new Error(`Failed to update alias: ${error.message}`);
+  }
+}

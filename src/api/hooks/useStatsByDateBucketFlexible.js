@@ -1,11 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchStatsByDateBucketFlexible } from '../httpRequests';
 
-/**
- * Custom hook to fetch stats by date bucket with flexible date ranges.
- * @param {Object} params - Parameters for the API call.
- * @returns {Object} { data, loading, error, refetch }
- */
 export function useStatsByDateBucketFlexible(params) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
