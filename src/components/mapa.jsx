@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './mapa.css';
 import Select from '@mui/material/Select';
 import MenuItem from '@mui/material/MenuItem';
@@ -13,16 +13,10 @@ import mapObjectsData from "../assets/map_testing/objects.json";
 import constSensorData from "../assets/map_testing/sensors.json";
 import { useLevelImage } from '../api/hooks/useLevelImage';
 import { useFetchLevelsbyUser } from '../api/hooks/useLevelbyUser';
+import { useMapInfo } from '../api/hooks/useMapInfo';
+import useMapLiveUpdates from '../api/hooks/useMapLiveUpdates';
 
 const user_id = "fb713fca-4cbc-44b1-8a25-c6685c3efd31";
-
-mapObjectsData.forEach(obj => {
-  const found = constSensorData.some(sensor => sensor.linkedKonvaId === obj.id);
-  if (!found) {
-    console.warn(`No sensor linked for Konva object with id: ${obj.id}`);
-  }
-});
-
 
 const Mapa = () => {
   // States for filters
@@ -48,6 +42,7 @@ const Mapa = () => {
   const [period, setPeriod] = useState('tiempo-real'); // 'tiempo-real', 'rotacion', 'ocupacion'
   // Example options for torre and nivel
 
+  
 
   // Custom hook usage
   //const { imageData, loading, error } = useLevelImage(selectedTorre, selectedNivel);
@@ -68,7 +63,38 @@ const Mapa = () => {
 
   // Use image hook with selected torre and nivel
   const selectedNivelObj = niveles.find(n => n.floor === Number(selectedNivel));
-  const { imageData, loading, error } = useLevelImage(selectedTorre, selectedNivel);
+  const { imageData, loading: imageLoading, error: imageError } = useLevelImage(selectedTorre, selectedNivel);
+
+  // --- INTEGRATION STARTS HERE ---
+  // Only fetch map/konva info if both torre and nivel are selected
+  const parking_id = selectedTorre;
+  const floor = selectedNivel ? Number(selectedNivel) : undefined;
+
+  const {
+    konvaInfo,
+    mapInfo: fetchedMapInfo,
+    loading: mapLoading,
+    error: mapError
+  } = useMapInfo(user_id, parking_id, floor);
+
+  // Local state for mapInfo to allow live updates
+  const [mapInfo, setMapInfo] = useState([]);
+
+  // Keep local mapInfo in sync with fetchedMapInfo
+  useEffect(() => {
+    if (Array.isArray(fetchedMapInfo)) {
+      setMapInfo(fetchedMapInfo);
+    }
+  }, [fetchedMapInfo]);
+
+  // Enable live updates
+  useMapLiveUpdates(setMapInfo);
+
+  // Parse konvaInfo only if available
+  const stage = konvaInfo?.stage_info ? JSON.parse(konvaInfo.stage_info) : null;
+  const objects = konvaInfo?.layout_info ? JSON.parse(konvaInfo.layout_info) : [];
+
+  // --- INTEGRATION ENDS HERE ---
 
   return (
     <div>
@@ -436,21 +462,32 @@ const Mapa = () => {
         <div className="map-visualization">
           <div className="map-content">
             <div className="map-placeholder">
-              {error && (
+              {(imageError || mapError) && (
                 <div style={{ color: 'red', marginBottom: 12 }}>
-                  Error al cargar la imagen del nivel: {error}
+                  {imageError && <>Error al cargar la imagen del nivel: {imageError}</>}
+                  {mapError && <>Error al cargar datos del mapa: {mapError}</>}
                 </div>
-                
               )}
-              <KonvaRenderer
-                stage={mapStageData}
-                objects={mapObjectsData}
-                backgroundUrl={imageData?.url} 
-                period={period}
-                sensorData={constSensorData}
-              />   
+              {(imageLoading || mapLoading) && (
+                <div style={{ marginBottom: 12 }}>Cargando mapa...</div>
+              )}
+              {/* Only render when BOTH stage and objects are ready */}
+              {stage && objects.length > 0 && mapInfo
+                ? (
+                  <KonvaRenderer
+                    stage={stage}
+                    objects={objects}
+                    backgroundUrl={imageData?.url}
+                    period={period}
+                    sensorData={mapInfo}
+                  />
+                )
+                : (
+                  // Optionally, show a loader or nothing while waiting for both
+                  <div style={{ marginBottom: 12 }}>Cargando mapa...</div>
+                )
+              }
             </div>
-            
           </div>
         </div>
 

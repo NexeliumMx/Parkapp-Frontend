@@ -1,7 +1,9 @@
 import React, { useRef, useEffect, useState } from "react";
 import { Stage, Layer, Rect, Circle, Image as KonvaImage, Group } from "react-konva";
 
+
 function useImage(url) {
+
   const [image, setImage] = React.useState(null);
   React.useEffect(() => {
     if (!url) return;
@@ -39,7 +41,7 @@ function interpolateColor(colors, t) {
 function getCircleColor(period, sensor) {
   if (!sensor) return "gray";
   if (period === "tiempo-real") {
-    return sensor.estado === 1 ? "#4caf50" : "#f44336"; // green or red
+    return sensor.current_state ? "#4caf50" : "#f44336"; // green or red
   }
   if (period === "rotacion" || period === "ocupacion") {
     // Heatmap: blue → green → yellow → red
@@ -111,7 +113,7 @@ const KonvaRenderer = ({
             />
           )}
           {objects.map((obj, idx) => {
-            const sensor = sensorData.find(s => s.linkedKonvaId === obj.id);
+            const sensor = sensorData.find(s => s.konva_id === obj.id);
             return (
               <Group
                 key={obj.id}

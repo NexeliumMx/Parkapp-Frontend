@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 
 const useLevelUpdates = (setData) => {
-  const processedMessages = useRef(new Set());
+  // Track last state per parking_id-floor
+  const lastState = useRef({});
 
   useEffect(() => {
     console.log('Initializing WebSocket connection...');
@@ -23,29 +24,14 @@ const useLevelUpdates = (setData) => {
       try {
         const payload = JSON.parse(event.data);
         console.log('Parsed payload:', payload);
-        
-        // Create a message key using parking_id, floor, and current_state
-        const messageKey = `${payload.parking_id}-${payload.floor}-${payload.current_state}`;
-        
-        // Check if we've already processed this exact message recently
-        if (processedMessages.current.has(messageKey)) {
-          console.log('Duplicate message detected, skipping:', messageKey);
+        const key = `${payload.parking_id}-${payload.floor}`;
+
+        // Only skip if the immediately previous message was the same
+        if (lastState.current[key] === payload.current_state) {
+          console.log('Consecutive duplicate detected, skipping:', key, payload.current_state);
           return;
         }
-        
-        // Add to processed messages
-        processedMessages.current.add(messageKey);
-        
-        // Clean up old messages (keep only last 50 to prevent memory issues)
-        if (processedMessages.current.size > 50) {
-          const messages = Array.from(processedMessages.current);
-          processedMessages.current = new Set(messages.slice(-25));
-        }
-
-        console.log('Payload type:', typeof payload);
-        console.log('Current state:', payload.current_state, typeof payload.current_state);
-        console.log('Parking ID:', payload.parking_id);
-        console.log('Floor:', payload.floor);
+        lastState.current[key] = payload.current_state;
 
         // Check if setData is actually a function
         if (typeof setData !== 'function') {
@@ -162,7 +148,7 @@ const useLevelUpdates = (setData) => {
         socket.close(1000, 'Component unmounting');
       }
       console.log('WebSocket connection closed');
-      processedMessages.current.clear();
+      lastState.current = {};
     };
   }, [setData]);
 };

@@ -175,9 +175,7 @@ export async function fetchLevelImage(parking_id, floor) {
     }
 
    const imageUrl = await response.text();
-    
-    console.log('Image URL:', imageUrl);
-    return { url: imageUrl}; // Return an object with the image URL
+    return { url: imageUrl}; 
 
   } catch (error) {
     console.error('Error in fetchLevelImage:', error);
@@ -340,5 +338,64 @@ export async function updateAlias({ user_id, field, new_value, parking_id, floor
   } catch (error) {
     console.error('Error in updateAlias:', error);
     throw new Error(`Failed to update alias: ${error.message}`);
+  }
+}
+
+export async function fetchKonvaInfo(user_id, parking_id, floor) {
+  if (!user_id || !parking_id || floor === undefined || floor === null) {
+    throw new Error('Missing required parameters: user_id, parking_id, floor');
+  }
+
+  const params = new URLSearchParams({
+    user_id,
+    parking_id,
+    floor
+  });
+
+  const url = `http://localhost:7071/api/getKonvaInfo?${params.toString()}`;
+  console.log(`[API CALL] fetchKonvaInfo: ${url}`);
+
+  try {
+    const response = await fetch(url);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch Konva info');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in fetchKonvaInfo:', error);
+    throw new Error(`Failed to fetch Konva info: ${error.message}`);
+  }
+}
+export async function fetchMapInfo(user_id, parking_id, floor) {
+  if (!user_id || !parking_id || floor === undefined || floor === null) {
+    throw new Error('Missing required parameters: user_id, parking_id, floor');
+  }
+
+  const params = new URLSearchParams({
+    user_id,
+    parking_id,
+    floor
+  });
+
+  const url = `http://localhost:7071/api/getMapInfo?${params.toString()}`;
+  console.log(`[API CALL] fetchMapInfo: ${url}`);
+
+  try {
+    const response = await fetch(url);
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch map info');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error in fetchMapInfo:', error);
+    throw new Error(`Failed to fetch map info: ${error.message}`);
   }
 }
