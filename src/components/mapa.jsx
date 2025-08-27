@@ -500,27 +500,23 @@ const Mapa = () => {
                   {mapError && <>Error al cargar datos del mapa: {mapError}</>}
                 </div>
               )}
-              {(imageLoading || mapLoading) && (
+
+              {/* Only show loading if torre and nivel are selected and loading is true */}
+              {selectedTorre && selectedNivel && (imageLoading || mapLoading) ? (
                 <div style={{ marginBottom: 12 }}>Cargando mapa...</div>
-              )}
-              {/* Only render when BOTH stage and objects are ready */}
-              {stage && objects.length > 0 && mapInfo
-                ? (
-                  <KonvaRenderer
-                    stage={stage}
-                    objects={objects}
-                    backgroundUrl={imageData?.url}
-                    period={period}
-                    sensorData={mapInfo}
-                    sensorStats={sensorStats}
-                    statsLoading={statsLoading}
-                  />
-                )
-                : (
-                  // Optionally, show a loader or nothing while waiting for both
-                  <div style={{ marginBottom: 12 }}>Cargando mapa...</div>
-                )
-              }
+              ) : selectedTorre && selectedNivel && stage && objects.length > 0 && mapInfo ? (
+                <KonvaRenderer
+                  stage={stage}
+                  objects={objects}
+                  backgroundUrl={imageData?.url}
+                  period={period}
+                  sensorData={mapInfo}
+                  sensorStats={sensorStats}
+                  statsLoading={statsLoading}
+                />
+              ) : selectedTorre && selectedNivel ? (
+                <div style={{ marginBottom: 12 }}>Cargando mapa...</div>
+              ) : null}
             </div>
           </div>
         </div>
