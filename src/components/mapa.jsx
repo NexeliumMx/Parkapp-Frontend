@@ -15,6 +15,7 @@ import { useLevelImage } from '../api/hooks/useLevelImage';
 import { useFetchLevelsbyUser } from '../api/hooks/useLevelbyUser';
 import { useMapInfo } from '../api/hooks/useMapInfo';
 import useMapLiveUpdates from '../api/hooks/useMapLiveUpdates';
+import { fetchStatsByDateBucketFlexible } from '../api/httpRequests';
 
 const user_id = "fb713fca-4cbc-44b1-8a25-c6685c3efd31";
 
@@ -40,6 +41,9 @@ const Mapa = () => {
   const [hourFrom, setHourFrom] = useState('');
   const [hourTo, setHourTo] = useState('');
   const [period, setPeriod] = useState('tiempo-real'); // 'tiempo-real', 'rotacion', 'ocupacion'
+  const [sensorStats, setSensorStats] = useState([]);
+  const [statsLoading, setStatsLoading] = useState(false);
+
   // Example options for torre and nivel
 
   
@@ -86,6 +90,34 @@ const Mapa = () => {
       setMapInfo(fetchedMapInfo);
     }
   }, [fetchedMapInfo]);
+
+  useEffect(() => {
+    if (!selectedTorre || !selectedNivel) return;
+    setStatsLoading(true); // Start loading
+
+    // Build params for stats API
+    const params = {
+      parking_id: selectedTorre,
+      floor: selectedNivel,
+      // Add year/month/day/hour as needed from your filters
+      // Example:
+      year: year ? { exact: year } : undefined,
+      month: month ? { exact: month } : undefined,
+      day: day ? { exact: day } : undefined,
+      hour: hour ? { exact: hour } : undefined,
+    };
+
+    fetchStatsByDateBucketFlexible(params)
+      .then(data => {
+        setSensorStats(data);
+        setStatsLoading(false); // Done loading
+      })
+      .catch(err => {
+        setSensorStats([]);
+        setStatsLoading(false); // Done loading (with error)
+        console.error('Failed to fetch sensor stats:', err);
+      });
+  }, [selectedTorre, selectedNivel, year, month, day, hour]);
 
   // Enable live updates
   useMapLiveUpdates(setMapInfo);
@@ -480,6 +512,8 @@ const Mapa = () => {
                     backgroundUrl={imageData?.url}
                     period={period}
                     sensorData={mapInfo}
+                    sensorStats={sensorStats}
+                    statsLoading={statsLoading}
                   />
                 )
                 : (

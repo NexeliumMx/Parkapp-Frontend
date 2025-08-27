@@ -38,22 +38,38 @@ function interpolateColor(colors, t) {
   return rgbToHex(rgb);
 }
 
-function getCircleColor(period, sensor) {
+function getCircleColor(period, sensor, sensorStats, statsLoading) {
+  if (statsLoading && (period === "rotacion" || period === "ocupacion")) return "gray";
   if (!sensor) return "gray";
+  const stats = sensorStats?.find(s => s.sensor_id === sensor.sensor_id);
+
+  if (period === "rotacion") {
+    if (stats && stats.normalized_rotation != null && !isNaN(Number(stats.normalized_rotation))) {
+      return interpolateColor(
+        ["#2196f3", "#4caf50", "#ffeb3b", "#f44336"],
+        Number(stats.normalized_rotation)
+      );
+    }
+    return "gray";
+  }
+
+  if (period === "ocupacion") {
+    if (stats && stats.occupation_percentage != null && !isNaN(Number(stats.occupation_percentage))) {
+      return interpolateColor(
+        ["#2196f3", "#4caf50", "#ffeb3b", "#f44336"],
+        Number(stats.occupation_percentage) / 100
+      );
+    }
+    return "gray";
+  }
+
   if (period === "tiempo-real") {
-    return sensor.current_state ? "#4caf50" : "#f44336"; // green or red
+    if (typeof sensor.current_state === "boolean") {
+      return sensor.current_state ? "#4caf50" : "#f44336";
+    }
+    return "gray";
   }
-  if (period === "rotacion" || period === "ocupacion") {
-    // Heatmap: blue → green → yellow → red
-    const value =
-      period === "rotacion"
-        ? sensor.frecuencia ?? 0
-        : sensor.ocupacion ?? 0;
-    return interpolateColor(
-      ["#2196f3", "#4caf50", "#ffeb3b", "#f44336"],
-      Math.max(0, Math.min(1, value))
-    );
-  }
+
   return "gray";
 }
 
@@ -63,6 +79,8 @@ const KonvaRenderer = ({
   backgroundUrl,
   period,
   sensorData = [],
+  sensorStats = [],
+  statsLoading 
 }) => {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(1);
@@ -114,6 +132,13 @@ const KonvaRenderer = ({
           )}
           {objects.map((obj, idx) => {
             const sensor = sensorData.find(s => s.konva_id === obj.id);
+            const stats = sensor && sensorStats.find(s => s.sensor_id === sensor.sensor_id);
+
+            console.log("obj.id:", obj.id);
+            console.log("sensor:", sensor);
+            console.log("stats:", stats);
+            console.log("period:", period);
+
             return (
               <Group
                 key={obj.id}
@@ -135,7 +160,7 @@ const KonvaRenderer = ({
                     x={obj.rect.width / 2}
                     y={obj.rect.height / 2}
                     radius={obj.circle.radius}
-                    fill={getCircleColor(period, sensor)}
+                    fill={getCircleColor(period, sensor, sensorStats, statsLoading)}
                     stroke={obj.circle.stroke}
                     strokeWidth={obj.circle.strokeWidth}
                   />
