@@ -23,12 +23,12 @@ function App() {
           </div>
           <div className="content">
             <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/mapa" element={<Mapa />} />
+              <Route path="/" element={<Dashboard sidebarCollapsed={collapsed} />} />
+              <Route path="/mapa" element={<Mapa sidebarCollapsed={collapsed} />} />
               <Route path="/graficas" element={<Graficas sidebarCollapsed={collapsed} />} />
-              <Route path="/tablas" element={<Tablas />} />
-              <Route path="/pernocte" element={<Pernocte />} />
-              <Route path="/info" element={<Info />} />
+              <Route path="/tablas" element={<Tablas sidebarCollapsed={collapsed} />} />
+              <Route path="/pernocte" element={<Pernocte sidebarCollapsed={collapsed} />} />
+              <Route path="/info" element={<Info sidebarCollapsed={collapsed} />} />
             </Routes>
           </div>
         </div>

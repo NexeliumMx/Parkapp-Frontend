@@ -7,10 +7,12 @@
  * Copyright (c) 2025 BY: Nexelium Technological Solutions S.A. de C.V.
  * All rights reserved.
  */
+const BASE_URL_AZURE = "https://mapbuilder-bindingsjs-bhh5e2dff2f6c9aq.southcentralus-01.azurewebsites.net/api";
+const BASE_URL_LOCAL = "http://localhost:7071/api";
 
 // Fetch level info by user access
 export async function fetchParkingLevels(user_id) {
-  let url = `http://localhost:7071/api/getGeneralInfo?user_id=${user_id}`;
+  let url = `${BASE_URL_AZURE}/getGeneralInfo?user_id=${user_id}`;
   console.log(`[API CALL] fetchParkingLevels: ${url}`);
   const response = await fetch(url);
   const resData = await response.json();
@@ -23,7 +25,7 @@ export async function fetchParkingLevels(user_id) {
 }
 
 export async function fetchLevelsByUser(user_id) {
-  let url = `http://localhost:7071/api/getLevelsByUser?user_id=${user_id}`;
+  let url = `${BASE_URL_AZURE}/getLevelsByUser?user_id=${user_id}`;
   console.log(`[API CALL] fetchLevelsByUser: ${url}`);
   const response = await fetch(url);
   const resData = await response.json();
@@ -35,7 +37,7 @@ export async function fetchLevelsByUser(user_id) {
   return resData;
 }
 export async function fetchSensorsByLevel(parking_id, floor) {
-  let url = `http://localhost:7071/api/getSensorsByLevel?parking_id=${parking_id}&floor=${floor}`;
+  let url = `${BASE_URL_AZURE}/getSensorsByLevel?parking_id=${parking_id}&floor=${floor}`;
   console.log(`[API CALL] fetchSensorsByLevel: ${url}`);
   const response = await fetch(url);
   const resData = await response.json();
@@ -61,7 +63,7 @@ export async function fetchAvailableDates(userId, filters = {}) {
     params.append('sensor_ids', filters.sensor_ids.join(','));
   }
 
-  const url = `http://localhost:7071/api/getAvailableDates?${params}`;
+  const url = `${BASE_URL_AZURE}/getAvailableDates?${params}`;
   console.log(`[API CALL] fetchAvailableDates: ${url}`);
   
   try {
@@ -140,7 +142,7 @@ export async function fetchAnalysisData(userId, timeSetting, dateParams = {}, lo
     }
   }
 
-  const url = `http://localhost:7071/api/getAnalysis?${params}`;
+  const url = `${BASE_URL_AZURE}/getAnalysis?${params}`;
   console.log(`[API CALL] fetchAnalysisData: ${url}`);
   
   try {
@@ -231,7 +233,7 @@ export async function fetchStatsByDateBucketFlexible(params) {
     }
   }
 
-  const url = `http://localhost:7071/api/getStatsByDateBucket?${query.toString()}`;
+  const url = `${BASE_URL_AZURE}/getStatsByDateBucket?${query.toString()}`;
   console.log(`[API CALL] fetchStatsByDateBucketFlexible: ${url}`);
 
   try {
@@ -255,7 +257,7 @@ export async function fetchPernocte(userId) {
   }
 
   const params = new URLSearchParams({ user_id: userId });
-  const url = `http://localhost:7071/api/pernocte?${params.toString()}`;
+  const url = `${BASE_URL_AZURE}/pernocte?${params.toString()}`;
   console.log(`[API CALL] fetchPernocte: ${url}`);
 
   try {
@@ -284,7 +286,7 @@ export async function fetchParkingInfo(userId) {
   }
 
   const params = new URLSearchParams({ user_id: userId });
-  const url = `http://localhost:7071/api/info?${params.toString()}`;
+  const url = `${BASE_URL_AZURE}/info?${params.toString()}`;
   console.log(`[API CALL] fetchParkingInfo: ${url}`);
 
   try {
@@ -317,7 +319,7 @@ export async function updateAlias({ user_id, field, new_value, parking_id, floor
     throw new Error('Invalid field to update.');
   }
 
-  const url = `http://localhost:7071/api/updateAlias`;
+  const url = `${BASE_URL_AZURE}/updateAlias`;
   const body = { user_id, field, new_value, parking_id };
   if (field === 'floor_alias') body.floor = floor;
 
@@ -352,7 +354,7 @@ export async function fetchKonvaInfo(user_id, parking_id, floor) {
     floor
   });
 
-  const url = `http://localhost:7071/api/getKonvaInfo?${params.toString()}`;
+  const url = `${BASE_URL_AZURE}/getKonvaInfo?${params.toString()}`;
   console.log(`[API CALL] fetchKonvaInfo: ${url}`);
 
   try {
@@ -381,7 +383,7 @@ export async function fetchMapInfo(user_id, parking_id, floor) {
     floor
   });
 
-  const url = `http://localhost:7071/api/getMapInfo?${params.toString()}`;
+  const url = `${BASE_URL_AZURE}/getMapInfo?${params.toString()}`;
   console.log(`[API CALL] fetchMapInfo: ${url}`);
 
   try {

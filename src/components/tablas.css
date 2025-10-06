@@ -19,7 +19,6 @@
   min-height: calc(100vh - 80px);
   
   transition: margin-left 0.3s ease;
-  max-width: 1600px;
   width: 100%;
 }
 

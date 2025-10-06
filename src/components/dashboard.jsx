@@ -5,7 +5,7 @@ import { Divider } from "@mui/material";
 import { useFetchParkingLevels } from "../api/hooks/fetchParkingLevels";
 import useLevelUpdates from "../api/hooks/useLevelUpdates";
 
-const Dashboard = () => {
+const Dashboard = ({ sidebarCollapsed }) => {
   // Make sure you're destructuring setData
   const { data, isLoading, error, setData } = useFetchParkingLevels("fb713fca-4cbc-44b1-8a25-c6685c3efd31");
 
@@ -39,7 +39,7 @@ const Dashboard = () => {
     : {};
 
   return (
-    <div className="dashboard">
+    <div className={`dashboard${sidebarCollapsed ? " collapsed" : ""}`}>
       <h1 className="dashboard-title">Home page</h1>
       <h4 className="dashboard-subtitle">Residencial Lomas de Bezares</h4>
       {/* Render complexes and their parkings */}
