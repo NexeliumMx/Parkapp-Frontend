@@ -19,7 +19,7 @@ import { fetchStatsByDateBucketFlexible } from '../api/httpRequests';
 
 const user_id = "fb713fca-4cbc-44b1-8a25-c6685c3efd31";
 
-const Mapa = () => {
+const Mapa = ({ sidebarCollapsed }) => {
   // States for filters
   const [selectedTorre, setSelectedTorre] = useState('');
   const [selectedNivel, setSelectedNivel] = useState('');
@@ -129,7 +129,7 @@ const Mapa = () => {
   // --- INTEGRATION ENDS HERE ---
 
   return (
-    <div>
+      <div className={`mapa-container${sidebarCollapsed ? " collapsed" : ""}`}>
       <div className="mapa-header-row">
         <h1 className="mapa-title">Frecuencia de rotaciones por lugar</h1>
         <div className="mapa-header-selects">
@@ -173,7 +173,7 @@ const Mapa = () => {
         </div>
       </div>
       <h4 className="mapa-subtitle">Residencial Lomas de Bezares</h4>
-      <div className="mapa-container">
+      <div className="mapa-subcontainer">
         <div className="filtros-tiempo-row">
           <ButtonGroup className="filtros-modo-botones" variant="outlined" color="primary">
             <Button
