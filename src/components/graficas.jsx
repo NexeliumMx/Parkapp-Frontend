@@ -271,11 +271,9 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
 
   if (isLoading) {
     return (
-      <div>
-        <h1 className="graficas-title">Gráficas</h1>
-        <h4 className="graficas-subtitle">Residencial Lomas de Bezares</h4>
-        <div style={{ padding: '20px', textAlign: 'center' }}>
-          Cargando datos de estacionamientos...
+      <div className={`graficas${sidebarCollapsed ? " collapsed" : ""}`}>
+        <div className="graficas-container">
+          {/* Optionally, add a skeleton or loader here */}
         </div>
       </div>
     );
@@ -283,25 +281,26 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
 
   if (error) {
     return (
-      <div>
-        <h1 className="graficas-title">Gráficas</h1>
-        <h4 className="graficas-subtitle">Residencial Lomas de Bezares</h4>
-        <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>
-          Error al cargar datos: {error}
+      <div className={`graficas${sidebarCollapsed ? " collapsed" : ""}`}>
+        <div className="graficas-container">
+          <div style={{ padding: '20px', textAlign: 'center', color: 'red' }}>
+            Error al cargar datos: {error}
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
+      <div className={`graficas${sidebarCollapsed ? " collapsed" : ""}`}>
+
       <h1 className="graficas-title">Gráficas</h1>
       <h4 className="graficas-subtitle">Residencial Lomas de Bezares</h4>
       <div
-        className={`graficas-container${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}
+        className={`graficas-container`}
       >
         {/* Subtítulo arriba de los filtros */}
-        <div style={{ fontSize: "1.15rem", fontWeight: 500, color: "#555", marginBottom: 8 }}>
+        <div style={{ fontSize: "1.15rem", fontWeight: 500, color: "#555", marginBottom: 8, marginLeft: 30 }}>
           Filtros de análisis
         </div>
         {/* Filtros superiores primero */}
@@ -476,18 +475,23 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
             >
               {/* Año */}
               <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
-                Año {yearsLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
+                Año 
                 <FormControl fullWidth>
                   <Select
                     value={year}
                     onChange={e => setYear(e.target.value)}
                     style={{ width: "100%" }}
                     disabled={yearsLoading}
+                    displayEmpty
                   >
-                    <MenuItem value="">Todos</MenuItem>
-                    {years.map(yearOption => (
-                      <MenuItem key={yearOption} value={yearOption.toString()}>
-                        {yearOption}
+                   
+                    <MenuItem value="" >
+                      <em>{yearsLoading ? 'Cargando...' : 'Todos'}</em>
+                    </MenuItem>
+
+                    {years.map(y => (
+                      <MenuItem key={y} value={String(y)}>
+                        {y}
                       </MenuItem>
                     ))}
                   </Select>
@@ -496,15 +500,18 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
               {/* Mes */}
               {(period === 'mensual' || period === 'diario') && (
                 <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
-                  Mes {monthsLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
+                  Mes
                   <FormControl fullWidth>
                     <Select
                       value={month}
                       onChange={e => setMonth(e.target.value)}
                       style={{ width: "100%" }}
                       disabled={monthsLoading || !year}
+                      displayEmpty
                     >
-                      <MenuItem value="">Todos</MenuItem>
+                      <MenuItem value="">
+                        <em>{monthsLoading ? 'Cargando...' : 'Todos'}</em>
+                      </MenuItem>
                       {months.map(monthOption => (
                         <MenuItem key={monthOption} value={monthOption.toString()}>
                           {new Date(2000, monthOption - 1).toLocaleString('es', { month: 'long' })}
@@ -517,15 +524,18 @@ const Graficas = ({ sidebarCollapsed = false, user_id = "fb713fca-4cbc-44b1-8a25
               {/* Día */}
               {period === 'diario' && (
                 <label style={{ flex: 1, width: "100%", minWidth: 0 }}>
-                  Día {daysLoading && <span style={{fontSize: '12px', color: '#666'}}>(Cargando...)</span>}
+                  Día
                   <FormControl fullWidth>
                     <Select
                       value={day}
                       onChange={e => setDay(e.target.value)}
                       style={{ width: "100%" }}
                       disabled={daysLoading || !year || !month}
+                      displayEmpty
                     >
-                      <MenuItem value="">Todos</MenuItem>
+                      <MenuItem value="">
+                        <em>{daysLoading ? 'Cargando...' : 'Todos'}</em>
+                      </MenuItem>
                       {days.map(dayOption => (
                         <MenuItem key={dayOption} value={dayOption.toString()}>
                           {dayOption}
