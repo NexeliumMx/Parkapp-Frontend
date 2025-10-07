@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper
 import './pernocte.css';
 import { usePernocte } from '../api/hooks/usePernocte';
 
-const Pernocte = () => {
+const Pernocte = ({ sidebarCollapsed }) => {
   const [fComplejo, setFComplejo] = useState('');
   const [fEstacionamiento, setFEstacionamiento] = useState('');
   const [fNivel, setFNivel] = useState('');
@@ -53,11 +53,11 @@ const Pernocte = () => {
   }, [rows, fComplejo, fEstacionamiento, fNivel, sortOrder]);
 
   return (
-    <div>
-      <div className="mapa-header-row">
-        <h1 className="mapa-title">Monitor de pernocte</h1>
+    <div className={`pernocte${sidebarCollapsed ? ' collapsed' : ''}`}>
+      <div className="pernocte-header-row">
+        <h1 className="pernocte-title">Monitor de pernocte</h1>
       </div>
-      <h4 className="mapa-subtitle">Visualiza y filtra los vehículos que han pernoctado en el lote</h4>
+      <h4 className="pernocte-subtitle">Visualiza y filtra los vehículos que han pernoctado en el lote</h4>
       <Card style={{ marginBottom: 24 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>Filtros y ordenamiento</Typography>

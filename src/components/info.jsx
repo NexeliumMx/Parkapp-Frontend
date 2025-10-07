@@ -94,7 +94,7 @@ const EditableCell = ({ value, onSave, disabled }) => {
   );
 };
 
-const Info = () => {
+const Info = ({ sidebarCollapsed }) => {
   const userAdmin='fb713fca-4cbc-44b1-8a25-c6685c3efd31';
   const userNoAdmin='b4fa4f93-c6b6-440d-bed2-2f8820c49a08';  
   const userId = userAdmin; // Example user ID
@@ -129,9 +129,11 @@ const Info = () => {
   : false;
 
   return (
-    <div className="header">
-      <h1 className="title">Info</h1>
-      <h4 className="subtitle">Residencial Lomas de Bezares</h4>
+    <div className={`info${sidebarCollapsed ? ' collapsed' : ''}`}>
+      <div className="info-header-row">
+        <h1 className="info-title">Info</h1>
+      </div>
+      <h4 className="info-subtitle">Residencial Lomas de Bezares</h4>
       {loading && <div>Cargando información...</div>}
       {error && <div style={{ color: 'red' }}>Error: {error.message}</div>}
       {updateError && <div style={{ color: 'red' }}>Error al actualizar: {updateError.message}</div>}

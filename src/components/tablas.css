@@ -1,10 +1,19 @@
+.tablas {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 32px 40px 0 240px; 
+  transition: padding-left 0.3s;
+}
+
+.tablas.collapsed {
+  padding: 32px 40px 0 120px; 
+}
 .tablas-title {
   font-size: 3rem;
   font-weight: bold;
   text-align: left;
   margin-top: 40px;
   margin-bottom: 5px;
-  margin-left:-2px ;
 }
 .tablas-subtitle {
   font-size: 1rem;
@@ -14,9 +23,7 @@
 }
 
 .tables-container {
-  margin: 0px 0px;
-  padding: 10px;
-  min-height: calc(100vh - 80px);
+ 
   
   transition: margin-left 0.3s ease;
   width: 100%;
@@ -35,7 +42,7 @@
   background-color: white;
   border-radius: 10px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
 }
 
 .filter-content {
@@ -97,7 +104,7 @@
 .content-box {
   background-color: white;
   border-radius: 10px;
-  padding: 20px;
+  padding: 0px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   
 }
@@ -106,7 +113,7 @@
 table {
   width: 100%;
   border-collapse: collapse;
-  margin-top: 10px;
+  margin-top: 0px;
 }
 
 th, td {

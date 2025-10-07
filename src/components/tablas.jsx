@@ -7,10 +7,11 @@ import InputLabel from '@mui/material/InputLabel';
 import { useStatsByDateBucketFlexible } from '../api/hooks/useStatsByDateBucketFlexible';
 import { useFetchLevelsbyUser } from '../api/hooks/useLevelbyUser';
 import Divider from '@mui/material/Divider';
+import { useValidYears, useValidMonths, useValidDays } from '../api/hooks/useValidDates';
 
 const user_id = 'fb713fca-4cbc-44b1-8a25-c6685c3efd31';
 
-const Tablas = () => {
+const Tablas = ({ sidebarCollapsed }) => {
   // Filter states
   const [selectedTower, setSelectedTower] = useState('');
   const [selectedLevel, setSelectedLevel] = useState('');
@@ -50,6 +51,19 @@ const Tablas = () => {
   const levelOptions = selectedParking
     ? selectedParking.levels.map(l => ({ floor: l.floor, floor_alias: l.floor_alias }))
     : [];
+
+  // Derive level id (floor) from selected level alias to filter dates consistently with graficas.jsx
+  const selectedLevelId = levelOptions.find(l => l.floor_alias === selectedLevel)?.floor || null;
+
+  // Fetch available dates like in graficas.jsx
+  const dateFilters = {
+    parking_ids: selectedTower ? [selectedTower] : undefined,
+    level_ids: selectedLevelId != null ? [selectedLevelId] : undefined,
+  };
+
+  const { years, loading: yearsLoading } = useValidYears(user_id, dateFilters);
+  const { months, loading: monthsLoading } = useValidMonths(user_id, year, dateFilters);
+  const { days, loading: daysLoading } = useValidDays(user_id, year, month, dateFilters);
 
   // Build params for hook
   const params = {
@@ -103,7 +117,7 @@ const Tablas = () => {
   }
 
   return (
-    <div>
+    <div className={`tablas${sidebarCollapsed ? " collapsed" : ""}`}>
       <h1 className="tablas-title">Tablas de sensores</h1>
       <h4 className="tablas-subtitle">Residencial Lomas de Bezares</h4>
       <div className="tables-container">
@@ -128,6 +142,11 @@ const Tablas = () => {
                         onChange={(e) => {
                           setSelectedTower(e.target.value);
                           setSelectedLevel('');
+                          // reset date filters when tower changes
+                          setYear(''); setMonth(''); setDay('');
+                          setRangeEnabled(false); setYearFrom(''); setYearTo('');
+                          setMonthRangeEnabled(false); setMonthFrom(''); setMonthTo('');
+                          setDayRangeEnabled(false); setDayFrom(''); setDayTo('');
                         }}
                       >
                         <MenuItem value="">Todas las torres</MenuItem>
@@ -224,16 +243,23 @@ const Tablas = () => {
                       <div className="filtro-dropdown-row">
                         {!rangeEnabled ? (
                           <FormControl fullWidth size="small">
-                            <InputLabel id="year-label">Año</InputLabel>
+                            {/* Removed InputLabel to match graficas */}
                             <Select
-                              labelId="year-label"
                               value={year}
-                              label="Año"
-                              onChange={e => setYear(e.target.value)}
+                              onChange={e => { setYear(e.target.value); setMonth(''); setDay(''); }}
+                              disabled={!selectedTower || yearsLoading}
+                              displayEmpty
                             >
-                              <MenuItem value="">Todos</MenuItem>
-                              <MenuItem value="2024">2024</MenuItem>
-                              <MenuItem value="2025">2025</MenuItem>
+                              <MenuItem value="">
+                                <em>
+                                  {!selectedTower ? 'Seleccione una torre' : (yearsLoading ? 'Cargando...' : 'Todos')}
+                                </em>
+                              </MenuItem>
+                              {years.map(y => (
+                                <MenuItem key={y} value={String(y)}>
+                                  {y}
+                                </MenuItem>
+                              ))}
                             </Select>
                           </FormControl>
                         ) : (
@@ -290,17 +316,25 @@ const Tablas = () => {
                       <div className="filtro-dropdown-row">
                         {!monthRangeEnabled ? (
                           <FormControl fullWidth size="small" style={{ minWidth: 90 }}>
-                            <InputLabel id="month-label">Mes</InputLabel>
+                            {/* Removed InputLabel to match graficas */}
                             <Select
-                              labelId="month-label"
                               value={month}
-                              label="Mes"
-                              onChange={e => setMonth(e.target.value)}
+                              onChange={e => { setMonth(e.target.value); setDay(''); }}
+                              disabled={!selectedTower || !year || monthsLoading}
+                              displayEmpty
                             >
-                              <MenuItem value="">Todos</MenuItem>
-                              {[...Array(12)].map((_, i) => (
-                                <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                                  {new Date(0, i).toLocaleString('es', { month: 'long' })}
+                              <MenuItem value="">
+                                <em>
+                                  {!selectedTower
+                                    ? 'Seleccione una torre'
+                                    : !year
+                                    ? 'Seleccione un año'
+                                    : (monthsLoading ? 'Cargando...' : 'Todos')}
+                                </em>
+                              </MenuItem>
+                              {months.map(m => (
+                                <MenuItem key={m} value={m.toString()}>
+                                  {new Date(2000, m - 1).toLocaleString('es', { month: 'long' })}
                                 </MenuItem>
                               ))}
                             </Select>
@@ -365,17 +399,27 @@ const Tablas = () => {
                       <div className="filtro-dropdown-row">
                         {!dayRangeEnabled ? (
                           <FormControl fullWidth size="small">
-                            <InputLabel id="day-label">Día</InputLabel>
+                            {/* Removed InputLabel to match graficas */}
                             <Select
-                              labelId="day-label"
                               value={day}
-                              label="Día"
                               onChange={e => setDay(e.target.value)}
+                              disabled={!selectedTower || !year || !month || daysLoading}
+                              displayEmpty
                             >
-                              <MenuItem value="">Todos</MenuItem>
-                              {[...Array(31)].map((_, i) => (
-                                <MenuItem key={i + 1} value={String(i + 1).padStart(2, '0')}>
-                                  {i + 1}
+                              <MenuItem value="">
+                                <em>
+                                  {!selectedTower
+                                    ? 'Seleccione una torre'
+                                    : !year
+                                    ? 'Seleccione un año'
+                                    : !month
+                                    ? 'Seleccione un mes'
+                                    : (daysLoading ? 'Cargando...' : 'Todos')}
+                                </em>
+                              </MenuItem>
+                              {days.map(d => (
+                                <MenuItem key={d} value={d.toString()}>
+                                  {d}
                                 </MenuItem>
                               ))}
                             </Select>

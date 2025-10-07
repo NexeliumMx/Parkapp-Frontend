@@ -1,20 +1,36 @@
+.pernocte {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 32px 40px 0 240px; 
+  transition: padding-left 0.3s;
+}
+
+.pernocte.collapsed {
+  padding: 32px 40px 0 120px; 
+}
+
 .pernocte-header-row {
   display: flex;
   align-items: center;
-  margin-bottom: 8px;
+  justify-content: space-between;
+  margin-bottom: 0px;
 }
-
 .pernocte-title {
-  font-size: 2rem;
-  font-weight: 600;
-  margin: 0;
+  font-size: 3rem;
+  font-weight: bold;
+  text-align: left;
+  margin-top: 40px;
+  margin-bottom: 5px;
+ 
 }
 
 .pernocte-subtitle {
-  font-size: 1.1rem;
-  color: #555;
-  margin-bottom: 16px;
+  font-size: 1rem;
+  text-align: left;
+  margin-top: 0px;
+  margin-bottom: 20px;
 }
+
 
 .pernocte-filter-card {
   margin-bottom: 24px;
