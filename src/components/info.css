@@ -178,3 +178,44 @@ font-size: 3rem;
   box-shadow: none !important;
   padding: 0;
 }
+
+/* Hide Fecha de mantenimiento (col 7) */
+@media (max-width: 1200px) {
+  .info-table th:nth-child(7),
+  .info-table td:nth-child(7) { display: none; }
+}
+
+/* Hide Fecha de instalación (col 6) */
+@media (max-width: 1080px) {
+  .info-table th:nth-child(6),
+  .info-table td:nth-child(6) { display: none; }
+}
+
+/* Hide Número de lugares (col 5) */
+@media (max-width: 960px) {
+  .info-table th:nth-child(5),
+  .info-table td:nth-child(5) { display: none; }
+}
+
+/* Hide Número de pisos (col 4) */
+@media (max-width: 840px) {
+  .info-table th:nth-child(4),
+  .info-table td:nth-child(4) { display: none; }
+}
+
+/* Hide Usuarios autorizados (col 3) */
+@media (max-width: 720px) {
+  .info-table th:nth-child(3),
+  .info-table td:nth-child(3) { display: none; }
+}
+
+/* Hide Complejo (col 2) — last to disappear, leaving only Estacionamiento */
+@media (max-width: 600px) {
+  .info-table th:nth-child(2),
+  .info-table td:nth-child(2) { display: none; }
+}
+
+/* Optional: tighten typography on very small screens */
+@media (max-width: 640px) {
+  .info-table th, .info-table td { padding: 6px 8px; font-size: 0.95rem; }
+}
